@@ -48,6 +48,9 @@ download() {
         curl -fsSL "$URL" -o "$DEST"
     elif command -v wget >/dev/null 2>&1; then
         wget -q "$URL" -O "$DEST"
+    else
+        echo "Neither curl nor wget found. Please install one."
+        exit 1
     fi
 }
 
@@ -83,7 +86,7 @@ main() {
                 ACTUAL="$(shasum -a 256 "$TMPDIR/${PLATFORM}.tar.gz" | awk '{print $1}')"
             else
                 echo "Warning: no sha256sum or shasum available, skipping verification."
-                ACTUAL="$EXPECTED"
+                EXPECTED=""
             fi
             if [ "$ACTUAL" != "$EXPECTED" ]; then
                 echo "Checksum mismatch! Expected ${EXPECTED}, got ${ACTUAL}"

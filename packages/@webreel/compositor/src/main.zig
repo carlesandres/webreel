@@ -190,6 +190,15 @@ const HudJson = struct {
     labels: []const []const u8 = &.{},
 };
 
+fn dupeStr(allocator: std.mem.Allocator, s: []const u8) ![]const u8 {
+    return allocator.dupe(u8, s);
+}
+
+fn dupeOptionalStr(allocator: std.mem.Allocator, s: ?[]const u8) !?[]const u8 {
+    if (s) |str| return try allocator.dupe(u8, str);
+    return null;
+}
+
 fn load_timeline(allocator: std.mem.Allocator, path: []const u8) !struct { types.TimelineData, []types.FrameData } {
     const json_data = try std.fs.cwd().readFileAlloc(allocator, path, 100 * 1024 * 1024);
     defer allocator.free(json_data);
@@ -206,7 +215,11 @@ fn load_timeline(allocator: std.mem.Allocator, path: []const u8) !struct { types
         var hud_state: ?types.HudState = null;
         if (f.hud) |h| {
             if (h.labels.len > 0) {
-                hud_state = .{ .labels = h.labels };
+                const duped_labels = try allocator.alloc([]const u8, h.labels.len);
+                for (h.labels, 0..) |label, li| {
+                    duped_labels[li] = try dupeStr(allocator, label);
+                }
+                hud_state = .{ .labels = duped_labels };
             }
         }
         frames[i] = .{
@@ -223,13 +236,13 @@ fn load_timeline(allocator: std.mem.Allocator, path: []const u8) !struct { types
     if (tj.window) |wj| {
         window_config = .{
             .titlebar_visible = wj.titlebar_visible,
-            .titlebar_title = wj.titlebar_title,
+            .titlebar_title = try dupeOptionalStr(allocator, wj.titlebar_title),
             .titlebar_stoplight = wj.titlebar_stoplight,
             .titlebar_height = wj.titlebar_height,
-            .titlebar_background = wj.titlebar_background,
+            .titlebar_background = try dupeStr(allocator, wj.titlebar_background),
             .border_radius = wj.border_radius,
             .shadow_blur = wj.shadow_blur,
-            .shadow_color = wj.shadow_color,
+            .shadow_color = try dupeStr(allocator, wj.shadow_color),
             .shadow_offset_y = wj.shadow_offset_y,
         };
     }
@@ -238,7 +251,7 @@ fn load_timeline(allocator: std.mem.Allocator, path: []const u8) !struct { types
     if (tj.background) |bj| {
         background_config = .{
             .bg_type = .solid,
-            .color = bj.color,
+            .color = try dupeStr(allocator, bj.color),
         };
     }
 
@@ -670,6 +683,17 @@ fn run_stream(allocator: std.mem.Allocator, args: Args) !void {
     std.debug.print("streamed {d} frames -> {s}\n", .{ frame_idx, output_path });
 }
 
+fn dupeOptionalTarget(allocator: std.mem.Allocator, t: ?StepTargetJson) !?runner_mod.StepTarget {
+    if (t) |target| {
+        return runner_mod.StepTarget{
+            .text = try dupeOptionalStr(allocator, target.text),
+            .selector = try dupeOptionalStr(allocator, target.selector),
+            .within = try dupeOptionalStr(allocator, target.within),
+        };
+    }
+    return null;
+}
+
 fn parse_steps(allocator: std.mem.Allocator, json_path: []const u8) ![]runner_mod.Step {
     const json_data = std.fs.cwd().readFileAlloc(allocator, json_path, 50 * 1024 * 1024) catch return error.StepsFileNotFound;
     defer allocator.free(json_data);
@@ -686,22 +710,22 @@ fn parse_steps(allocator: std.mem.Allocator, json_path: []const u8) ![]runner_mo
         steps[i] = .{
             .action = parseStepAction(sj.action) orelse .pause,
             .ms = sj.ms,
-            .text = sj.text,
-            .selector = sj.selector,
-            .within = sj.within,
-            .key = sj.key,
-            .label = sj.label,
+            .text = try dupeOptionalStr(allocator, sj.text),
+            .selector = try dupeOptionalStr(allocator, sj.selector),
+            .within = try dupeOptionalStr(allocator, sj.within),
+            .key = try dupeOptionalStr(allocator, sj.key),
+            .label = try dupeOptionalStr(allocator, sj.label),
             .x = sj.x,
             .y = sj.y,
-            .url = sj.url,
-            .output = sj.output,
-            .value = sj.value,
+            .url = try dupeOptionalStr(allocator, sj.url),
+            .output = try dupeOptionalStr(allocator, sj.output),
+            .value = try dupeOptionalStr(allocator, sj.value),
             .delay = sj.delay,
             .char_delay = sj.charDelay,
             .timeout = sj.timeout,
-            .from = if (sj.from) |f| runner_mod.StepTarget{ .text = f.text, .selector = f.selector, .within = f.within } else null,
-            .to = if (sj.to) |t| runner_mod.StepTarget{ .text = t.text, .selector = t.selector, .within = t.within } else null,
-            .target = sj.target,
+            .from = try dupeOptionalTarget(allocator, sj.from),
+            .to = try dupeOptionalTarget(allocator, sj.to),
+            .target = try dupeOptionalStr(allocator, sj.target),
         };
     }
 

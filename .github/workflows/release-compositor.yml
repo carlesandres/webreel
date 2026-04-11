@@ -15,19 +15,19 @@ jobs:
         include:
           - os: ubuntu-latest
             target: x86_64-linux
-            binary: webreel-linux-x64
+            platform: webreel-linux-x86_64
           - os: ubuntu-latest
             target: aarch64-linux
-            binary: webreel-linux-arm64
+            platform: webreel-linux-aarch64
           - os: macos-latest
             target: x86_64-macos
-            binary: webreel-darwin-x64
+            platform: webreel-darwin-x86_64
           - os: macos-latest
             target: aarch64-macos
-            binary: webreel-darwin-arm64
+            platform: webreel-darwin-aarch64
           - os: windows-latest
             target: x86_64-windows
-            binary: webreel-windows-x64
+            platform: webreel-windows-x86_64
 
     runs-on: ${{ matrix.os }}
 
@@ -50,18 +50,26 @@ jobs:
             -Dtarget=${{ matrix.target }} \
             -Dexe-name=webreel
 
-      - name: Rename binary
+      - name: Package archive
         working-directory: packages/@webreel/compositor
+        shell: bash
         run: |
           mkdir -p dist
-          cp zig-out/bin/webreel dist/${{ matrix.binary }} 2>/dev/null || \
-          cp zig-out/bin/webreel.exe dist/${{ matrix.binary }}.exe 2>/dev/null
+          if [ -f zig-out/bin/webreel.exe ]; then
+            cp zig-out/bin/webreel.exe dist/webreel.exe
+            tar czf dist/${{ matrix.platform }}.tar.gz -C dist webreel.exe
+            rm dist/webreel.exe
+          else
+            cp zig-out/bin/webreel dist/webreel
+            tar czf dist/${{ matrix.platform }}.tar.gz -C dist webreel
+            rm dist/webreel
+          fi
 
       - name: Upload artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: ${{ matrix.binary }}
-          path: packages/@webreel/compositor/dist/${{ matrix.binary }}*
+          name: ${{ matrix.platform }}
+          path: packages/@webreel/compositor/dist/${{ matrix.platform }}.tar.gz
 
   release:
     needs: build
@@ -71,18 +79,15 @@ jobs:
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           path: artifacts
+          merge-multiple: true
 
       - name: Generate checksums
         run: |
           cd artifacts
-          find . -type f ! -name 'checksums.txt' | sort | while read -r f; do
-            sha256sum "$f"
-          done > checksums.txt
+          sha256sum *.tar.gz > checksums.txt
 
       - name: Create release
         uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe # v2
         with:
-          files: |
-            artifacts/**/*
-            artifacts/checksums.txt
+          files: artifacts/*
           generate_release_notes: true
