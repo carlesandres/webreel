@@ -706,7 +706,7 @@ export function Timeline() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-56">
-                  {STEP_TEMPLATES.map((template, i) => (
+                  {STEP_TEMPLATES.map((template) => (
                     <DropdownMenuItem
                       key={template.label}
                       onSelect={() => addStep(template.step)}

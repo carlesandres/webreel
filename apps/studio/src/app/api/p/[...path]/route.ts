@@ -7,6 +7,7 @@ import {
   STRIPPED_RESPONSE_HEADERS,
   DEFAULT_USER_AGENT,
 } from "@/lib/proxy-utils";
+import { isBlockedUrl } from "@/lib/url-validation";
 
 function reconstructUrl(pathSegments: string[]): string | null {
   if (pathSegments.length < 2) return null;
@@ -29,6 +30,10 @@ export async function GET(
   const searchParams = request.nextUrl.search;
   const fullUrl = searchParams ? `${targetUrl}${searchParams}` : targetUrl;
 
+  if (isBlockedUrl(fullUrl)) {
+    return NextResponse.json({ error: "URL not allowed" }, { status: 403 });
+  }
+
   try {
     const response = await fetch(fullUrl, {
       headers: {
@@ -37,6 +42,7 @@ export async function GET(
         "Accept-Language": request.headers.get("accept-language") ?? "en-US,en;q=0.9",
       },
       redirect: "follow",
+      signal: AbortSignal.timeout(10_000),
     });
 
     const contentType = response.headers.get("content-type") || "";

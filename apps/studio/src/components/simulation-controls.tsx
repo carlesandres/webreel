@@ -11,7 +11,6 @@ import {
   highlightFoundAtom,
   previewModeAtom,
 } from "@/store/config";
-import type { PreviewMode } from "@/store/config";
 import type { Step } from "@/store/config";
 import { Button } from "@/components/ui/button";
 import {
@@ -74,7 +73,7 @@ export function SimulationControls({
 }: SimulationControlsProps) {
   const videoConfig = useAtomValue(selectedVideoConfigAtom);
   const [currentStep, setCurrentStep] = useAtom(selectedStepIndexAtom);
-  const [simulationStatus, setSimulationStatus] = useAtom(simulationStatusAtom);
+  const simulationStatus = useAtomValue(simulationStatusAtom);
   const [speed, setSpeed] = useAtom(simulationSpeedAtom);
   const simStep = useAtomValue(simulationStepAtom);
   const highlightFound = useAtomValue(highlightFoundAtom);

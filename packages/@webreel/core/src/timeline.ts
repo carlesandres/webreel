@@ -236,6 +236,14 @@ export class InteractionTimeline {
     return this.frames[this.frames.length - 1];
   }
 
+  get bufferedFrameCount(): number {
+    return this.frames.length;
+  }
+
+  flushFrames(upTo: number): FrameData[] {
+    return this.frames.splice(0, upTo);
+  }
+
   getEvents(): SoundEvent[] {
     return this.events;
   }

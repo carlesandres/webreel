@@ -162,9 +162,8 @@ export async function compose(opts: NativeComposeOptions): Promise<void> {
       const stderrChunks: Buffer[] = [];
       proc.stderr?.on("data", (chunk: Buffer) => stderrChunks.push(chunk));
 
-      let stdoutData = "";
-      proc.stdout?.on("data", (chunk: Buffer) => {
-        stdoutData += chunk.toString();
+      proc.stdout?.on("data", () => {
+        // consume stdout to prevent backpressure
       });
 
       proc.on("close", (code) => {
@@ -227,6 +226,7 @@ export class StreamCompositor {
   private stdin: Writable;
   private drainResolve: (() => void) | null = null;
   private finished = false;
+  private closePromise: Promise<void>;
 
   constructor(opts: StreamOptions) {
     const binPath = getCompositorBinaryPath();
@@ -251,6 +251,21 @@ export class StreamCompositor {
         this.drainResolve = null;
         r();
       }
+    });
+
+    this.closePromise = new Promise<void>((resolvePromise, rejectPromise) => {
+      this.proc.on("close", (code) => {
+        if (code === 0) resolvePromise();
+        else {
+          const stderr = Buffer.concat(this.stderrChunks).toString().slice(-2000);
+          rejectPromise(
+            new Error(
+              `Stream compositor exited with code ${code}${stderr ? `:\n${stderr}` : ""}`,
+            ),
+          );
+        }
+      });
+      this.proc.on("error", rejectPromise);
     });
 
     const configJson = Buffer.from(
@@ -292,6 +307,11 @@ export class StreamCompositor {
 
   waitForDrain(): Promise<void> {
     return new Promise((res) => {
+      if (this.drainResolve) {
+        const prev = this.drainResolve;
+        this.drainResolve = null;
+        prev();
+      }
       this.drainResolve = res;
     });
   }
@@ -305,20 +325,7 @@ export class StreamCompositor {
     this.stdin.write(endBuf);
     this.stdin.end();
 
-    return new Promise<void>((resolvePromise, rejectPromise) => {
-      this.proc.on("close", (code) => {
-        if (code === 0) resolvePromise();
-        else {
-          const stderr = Buffer.concat(this.stderrChunks).toString().slice(-2000);
-          rejectPromise(
-            new Error(
-              `Stream compositor exited with code ${code}${stderr ? `:\n${stderr}` : ""}`,
-            ),
-          );
-        }
-      });
-      this.proc.on("error", rejectPromise);
-    });
+    return this.closePromise;
   }
 
   kill(): void {

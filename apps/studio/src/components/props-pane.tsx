@@ -11,7 +11,7 @@ import {
   commitConfigAtom,
   VIEWPORT_PRESETS,
 } from "@/store/config";
-import type { Step, VideoConfig, WindowConfig, BackgroundConfig } from "@/store/config";
+import type { Step, VideoConfig, WindowConfig } from "@/store/config";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";

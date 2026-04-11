@@ -1,11 +1,7 @@
 import { accessSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { resolve, extname } from "node:path";
-import type {
-  TimelineData,
-  TimelineWindowConfig,
-  TimelineBackgroundConfig,
-} from "./timeline.js";
+import type { TimelineData, TimelineWindowConfig } from "./timeline.js";
 import { ensureFfmpeg } from "./ffmpeg.js";
 import { finalizeMp4, finalizeWebm, finalizeGif, type SfxConfig } from "./media.js";
 

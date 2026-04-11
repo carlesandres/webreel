@@ -1,27 +1,18 @@
 "use client";
 
 import { useRef, useState, useEffect, useCallback, useMemo } from "react";
-import { useAtom, useAtomValue, useSetAtom } from "jotai/react";
+import { useAtom, useAtomValue } from "jotai/react";
 import {
-  configJsonAtom,
   selectedVideoConfigAtom,
   parsedConfigAtom,
   selectedVideoAtom,
   pickModeAtom,
   pickedSelectorAtom,
+  videoNamesAtom,
   renderStatusAtom,
   renderLogsAtom,
   lastRenderOutputAtom,
-  videoNamesAtom,
-  selectedStepIndexAtom,
-  simulationStatusAtom,
-  simulationSpeedAtom,
-  simulationStepAtom,
-  highlightFoundAtom,
-  replayStateAtom,
-  replayedThroughStepAtom,
 } from "@/store/config";
-import type { ThemeConfig, Step, WindowConfig, BackgroundConfig } from "@/store/config";
 import {
   Globe,
   RefreshCw,
@@ -50,375 +41,26 @@ import {
   ResizableHandle,
 } from "@/components/ui/resizable";
 import { SimulationControls } from "@/components/simulation-controls";
+import { RenderConsole } from "@/components/render-console";
+import { PreviewWithChrome } from "@/components/preview-chrome";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
-
-const CURSOR_SVG =
-  '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M5.5 3.21V20.8c0 .45.54.67.85.35l4.86-4.86a.5.5 0 0 1 .35-.15h6.87c.45 0 .67-.54.35-.85L5.85 2.35a.5.5 0 0 0-.35.86z" fill="#fff" stroke="#000" stroke-width="1.5" stroke-linejoin="round"/></svg>';
-
-function buildCursorStyle(size: number, hotspot: "top-left" | "center"): string {
-  const scaledSvg = CURSOR_SVG.replace(
-    /width="24" height="24"/,
-    `width="${size}" height="${size}"`,
-  );
-  const encoded = encodeURIComponent(scaledSvg)
-    .replace(/%20/g, " ")
-    .replace(/%22/g, "'")
-    .replace(/%3D/g, "=")
-    .replace(/%3A/g, ":")
-    .replace(/%2F/g, "/");
-
-  const hx = hotspot === "center" ? Math.round(size / 2) : Math.round(size * 0.2);
-  const hy = hotspot === "center" ? Math.round(size / 2) : Math.round(size * 0.1);
-
-  return `url("data:image/svg+xml,${encoded}") ${hx} ${hy}, auto`;
-}
-
-function useContainerSize(ref: React.RefObject<HTMLDivElement | null>) {
-  const [size, setSize] = useState({ width: 0, height: 0 });
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-
-    const observer = new ResizeObserver((entries) => {
-      const entry = entries[0];
-      if (entry) {
-        setSize({
-          width: entry.contentRect.width,
-          height: entry.contentRect.height,
-        });
-      }
-    });
-
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [ref]);
-
-  return size;
-}
-
-function resolveUrl(url: string, baseUrl?: string, configBaseUrl?: string) {
-  const base = baseUrl || configBaseUrl;
-  if (!base) return url;
-  try {
-    return new URL(url, base).href;
-  } catch {
-    return url;
-  }
-}
-
-function buildThemePayload(videoTheme?: ThemeConfig, configTheme?: ThemeConfig) {
-  return {
-    cursor: {
-      size: videoTheme?.cursor?.size ?? configTheme?.cursor?.size ?? 24,
-      hotspot: videoTheme?.cursor?.hotspot ?? configTheme?.cursor?.hotspot ?? "top-left",
-    },
-    hud: {
-      background:
-        videoTheme?.hud?.background ?? configTheme?.hud?.background ?? "rgba(0,0,0,0.5)",
-      color:
-        videoTheme?.hud?.color ?? configTheme?.hud?.color ?? "rgba(255,255,255,0.85)",
-      fontSize: videoTheme?.hud?.fontSize ?? configTheme?.hud?.fontSize ?? 56,
-      fontFamily:
-        videoTheme?.hud?.fontFamily ??
-        configTheme?.hud?.fontFamily ??
-        '"Geist", -apple-system, BlinkMacSystemFont, sans-serif',
-      borderRadius: videoTheme?.hud?.borderRadius ?? configTheme?.hud?.borderRadius ?? 18,
-      position: videoTheme?.hud?.position ?? configTheme?.hud?.position ?? "bottom",
-    },
-  };
-}
-
-function RenderConsole() {
-  const [renderStatus, setRenderStatus] = useAtom(renderStatusAtom);
-  const [renderLogs, setRenderLogs] = useAtom(renderLogsAtom);
-  const scrollRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [renderLogs]);
-
-  if (renderStatus === "idle" && renderLogs.length === 0) return null;
-
-  return (
-    <div className="flex h-full flex-col">
-      <div className="flex shrink-0 items-center gap-2 px-3 py-1.5">
-        <span
-          className={cn(
-            "size-1.5 shrink-0 rounded-full",
-            renderStatus === "running" && "animate-pulse bg-warning",
-            renderStatus === "done" && "bg-success",
-            renderStatus === "error" && "bg-destructive",
-            renderStatus === "idle" && "bg-muted-foreground/30",
-          )}
-        />
-        <span className="text-[11px] text-muted-foreground">
-          {renderStatus === "running"
-            ? "Recording..."
-            : renderStatus === "done"
-              ? "Recording complete"
-              : renderStatus === "error"
-                ? "Recording failed"
-                : "Output"}
-        </span>
-        <div className="ml-auto flex items-center gap-1">
-          {renderLogs.length > 0 && (
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              onClick={() => {
-                setRenderLogs([]);
-                setRenderStatus("idle");
-              }}
-              title="Clear"
-            >
-              <X className="size-3" />
-            </Button>
-          )}
-        </div>
-      </div>
-      <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto bg-card/80 px-3 py-2">
-        {renderLogs.map((line, i) => (
-          <div
-            key={i}
-            className={cn(
-              "font-mono text-[10px] leading-relaxed",
-              line.startsWith("[err]") ? "text-destructive" : "text-muted-foreground",
-            )}
-          >
-            {line.startsWith("[err]") ? line.slice(5) : line}
-          </div>
-        ))}
-        {renderLogs.length === 0 && (
-          <p className="text-[10px] text-muted-foreground/40">No output yet</p>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function sendToIframe(
-  iframeRef: React.RefObject<HTMLIFrameElement | null>,
-  type: string,
-  payload?: Record<string, unknown>,
-) {
-  iframeRef.current?.contentWindow?.postMessage({ type, payload }, "*");
-}
-
-function buildBackgroundStyle(bg?: BackgroundConfig): React.CSSProperties {
-  if (!bg) return { background: "#e0e0e0" };
-  switch (bg.type) {
-    case "gradient": {
-      const { from = "#667eea", to = "#764ba2", angle = 180 } = bg.gradient ?? {};
-      return { background: `linear-gradient(${angle}deg, ${from}, ${to})` };
-    }
-    case "image":
-      return {
-        backgroundImage: bg.image ? `url(${bg.image})` : undefined,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        backgroundColor: "#e0e0e0",
-      };
-    case "solid":
-    default:
-      return { background: bg.color ?? "#e0e0e0" };
-  }
-}
-
-function buildShadowStyle(shadow?: WindowConfig["shadow"]): string | undefined {
-  if (!shadow) return undefined;
-  const blur = typeof shadow === "object" ? (shadow.blur ?? 40) : 40;
-  const color =
-    typeof shadow === "object"
-      ? (shadow.color ?? "rgba(0,0,0,0.35)")
-      : "rgba(0,0,0,0.35)";
-  const offsetY = typeof shadow === "object" ? (shadow.offsetY ?? 10) : 10;
-  return `0 ${offsetY}px ${blur}px ${color}`;
-}
-
-function formatElapsed(seconds: number) {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m}:${s.toString().padStart(2, "0")}`;
-}
-
-function PreviewWithChrome({
-  canvasW,
-  canvasH,
-  vpWidth,
-  vpHeight,
-  scale,
-  titlebarH,
-  titlebarVisible,
-  borderRadius,
-  windowCfg,
-  backgroundCfg,
-  iframeKey,
-  iframeRef,
-  iframeSrc,
-  selectedVideo,
-  pickMode,
-  previewCursor,
-}: {
-  canvasW: number;
-  canvasH: number;
-  vpWidth: number;
-  vpHeight: number;
-  scale: number;
-  titlebarH: number;
-  titlebarVisible: boolean;
-  borderRadius: number;
-  windowCfg?: WindowConfig;
-  backgroundCfg?: BackgroundConfig;
-  iframeKey: number;
-  iframeRef: React.RefObject<HTMLIFrameElement | null>;
-  iframeSrc: string;
-  selectedVideo: string | null;
-  pickMode: boolean;
-  previewCursor: string;
-}) {
-  const windowTotalH = vpHeight + titlebarH;
-  let winX: number;
-  let winY: number;
-  if (
-    windowCfg?.position &&
-    typeof windowCfg.position === "object" &&
-    "x" in windowCfg.position
-  ) {
-    winX = windowCfg.position.x;
-    winY = windowCfg.position.y;
-  } else {
-    winX = Math.round((canvasW - vpWidth) / 2);
-    winY = Math.round((canvasH - windowTotalH) / 2);
-  }
-
-  const shadow = buildShadowStyle(windowCfg?.shadow);
-  const tbBg = windowCfg?.titlebar?.background ?? "#e8e8e8";
-  const tbStoplight = windowCfg?.titlebar?.stoplight !== false;
-  const tbTitle = windowCfg?.titlebar?.title ?? "";
-
-  return (
-    <div
-      className={cn("relative overflow-hidden", pickMode && "ring-2 ring-blue-500/50")}
-      style={{
-        width: canvasW * scale,
-        height: canvasH * scale,
-        cursor: previewCursor,
-      }}
-    >
-      <div
-        style={{
-          width: canvasW,
-          height: canvasH,
-          transform: `scale(${scale})`,
-          transformOrigin: "top left",
-          position: "relative",
-          ...buildBackgroundStyle(backgroundCfg),
-        }}
-      >
-        <div
-          style={{
-            position: "absolute",
-            left: winX,
-            top: winY,
-            width: vpWidth,
-            borderRadius,
-            boxShadow: shadow,
-            overflow: "hidden",
-          }}
-        >
-          {titlebarVisible && titlebarH > 0 && (
-            <div
-              style={{
-                height: titlebarH,
-                background: tbBg,
-                display: "flex",
-                alignItems: "center",
-                paddingLeft: 16,
-                paddingRight: 16,
-                position: "relative",
-                userSelect: "none",
-              }}
-            >
-              {tbStoplight && (
-                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <span
-                    style={{
-                      width: 12,
-                      height: 12,
-                      borderRadius: "50%",
-                      background: "#FF5F57",
-                      display: "inline-block",
-                    }}
-                  />
-                  <span
-                    style={{
-                      width: 12,
-                      height: 12,
-                      borderRadius: "50%",
-                      background: "#FEBC2E",
-                      display: "inline-block",
-                    }}
-                  />
-                  <span
-                    style={{
-                      width: 12,
-                      height: 12,
-                      borderRadius: "50%",
-                      background: "#28C840",
-                      display: "inline-block",
-                    }}
-                  />
-                </div>
-              )}
-              {tbTitle && (
-                <span
-                  style={{
-                    position: "absolute",
-                    left: "50%",
-                    transform: "translateX(-50%)",
-                    fontSize: 12,
-                    color: "#4d4d4d",
-                    fontFamily: "system-ui, -apple-system, sans-serif",
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    maxWidth: "60%",
-                  }}
-                >
-                  {tbTitle}
-                </span>
-              )}
-            </div>
-          )}
-          <iframe
-            key={iframeKey}
-            ref={iframeRef}
-            src={iframeSrc}
-            title={`Preview: ${selectedVideo}`}
-            style={{
-              width: vpWidth,
-              height: vpHeight,
-              border: "none",
-              display: "block",
-            }}
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
+import {
+  buildCursorStyle,
+  useContainerSize,
+  resolvePreviewUrl,
+  buildThemePayload,
+  formatElapsed,
+  sendToIframe,
+} from "@/lib/preview-utils";
+import { useRender } from "@/hooks/use-render";
+import { useSimulation } from "@/hooks/use-simulation";
 
 export function Preview() {
   const videoConfig = useAtomValue(selectedVideoConfigAtom);
   const { config } = useAtomValue(parsedConfigAtom);
-  const configJson = useAtomValue(configJsonAtom);
   const selectedVideo = useAtomValue(selectedVideoAtom);
   const videoNames = useAtomValue(videoNamesAtom);
-  const selectedStep = useAtomValue(selectedStepIndexAtom);
   const { resolvedTheme } = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -427,29 +69,17 @@ export function Preview() {
   const [pickMode, setPickMode] = useAtom(pickModeAtom);
   const [pickedSelector, setPickedSelector] = useAtom(pickedSelectorAtom);
   const [copied, setCopied] = useState(false);
-  const [renderStatus, setRenderStatus] = useAtom(renderStatusAtom);
-  const [renderLogs, setRenderLogs] = useAtom(renderLogsAtom);
-  const [lastRenderOutput, setLastRenderOutput] = useAtom(lastRenderOutputAtom);
-  const abortRef = useRef<AbortController | null>(null);
   const [canvasMode, setCanvasMode] = useState<"preview" | "playback">("preview");
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoPlaying, setVideoPlaying] = useState(false);
   const [videoCurrentTime, setVideoCurrentTime] = useState(0);
   const [videoDuration, setVideoDuration] = useState(0);
-  const recordingStartRef = useRef(0);
-  const [recordingElapsed, setRecordingElapsed] = useState(0);
-  const [simulationStatus, setSimulationStatus] = useAtom(simulationStatusAtom);
-  const simulationSpeed = useAtomValue(simulationSpeedAtom);
-  const setSimulationStep = useSetAtom(simulationStepAtom);
-  const setHighlightFound = useSetAtom(highlightFoundAtom);
   const [iframeReady, setIframeReady] = useState(false);
-  const [replayState, setReplayState] = useAtom(replayStateAtom);
-  const [replayedThrough, setReplayedThrough] = useAtom(replayedThroughStepAtom);
-  const replayAbortRef = useRef(false);
-  const readyResolverRef = useRef<(() => void) | null>(null);
-  const executeResolverRef = useRef<(() => void) | null>(null);
-  const showConsole =
-    canvasMode !== "playback" && (renderStatus !== "idle" || renderLogs.length > 0);
+  const renderStatus = useAtomValue(renderStatusAtom);
+  const renderLogs = useAtomValue(renderLogsAtom);
+  const lastRenderOutput = useAtomValue(lastRenderOutputAtom);
+
+  const { recordingElapsed, startRender, stopRender } = useRender();
 
   const cursorSize =
     videoConfig?.theme?.cursor?.size ?? config?.theme?.cursor?.size ?? 24;
@@ -487,7 +117,7 @@ export function Preview() {
   const scale = Math.min(availW / canvasW, availH / canvasH, 1);
 
   const resolvedUrl = videoConfig
-    ? resolveUrl(videoConfig.url, videoConfig.baseUrl, config?.baseUrl)
+    ? resolvePreviewUrl(videoConfig.url, videoConfig.baseUrl, config?.baseUrl)
     : null;
 
   const isLoadable =
@@ -497,6 +127,24 @@ export function Preview() {
   const iframeSrc = isLoadable
     ? `/api/proxy?url=${encodeURIComponent(resolvedUrl)}&mode=preview`
     : null;
+
+  const showConsole =
+    canvasMode !== "playback" && (renderStatus !== "idle" || renderLogs.length > 0);
+
+  const {
+    replayState,
+    simulationStatus,
+    resolveReady,
+    resolveExecute,
+    handleSimulationProgress,
+    handleSimulationComplete,
+    startSimulation,
+    stopSimulation,
+    simulateOneStep,
+    setHighlightFound,
+    setSimulationStep,
+    setSimulationStatus,
+  } = useSimulation(iframeRef, iframeReady, iframeSrc);
 
   const reload = useCallback(() => {
     setIframeReady(false);
@@ -513,7 +161,6 @@ export function Preview() {
     setCopied(false);
   }, [setPickMode, setPickedSelector]);
 
-  // Listen for messages from iframe
   useEffect(() => {
     function onMessage(e: MessageEvent) {
       if (!e.data || typeof e.data.type !== "string") return;
@@ -527,32 +174,21 @@ export function Preview() {
           break;
         case "webreel:ready":
           setIframeReady(true);
-          if (readyResolverRef.current) {
-            readyResolverRef.current();
-            readyResolverRef.current = null;
-          }
-          if (executeResolverRef.current) {
-            executeResolverRef.current();
-            executeResolverRef.current = null;
-          }
+          resolveReady();
           break;
         case "webreel:execute:done":
-          if (executeResolverRef.current) {
-            executeResolverRef.current();
-            executeResolverRef.current = null;
-          }
+          resolveExecute();
           break;
         case "webreel:highlight:result":
           setHighlightFound(e.data.payload?.found ?? null);
           break;
         case "webreel:simulate:progress":
           if (typeof e.data.payload?.index === "number") {
-            setSimulationStep(e.data.payload.index);
+            handleSimulationProgress(e.data.payload.index);
           }
           break;
         case "webreel:simulate:complete":
-          setSimulationStatus("idle");
-          setSimulationStep(-1);
+          handleSimulationComplete();
           break;
         case "webreel:step:done":
           break;
@@ -576,12 +212,15 @@ export function Preview() {
     setSimulationStep,
     setSimulationStatus,
     resolvedUrl,
+    resolveReady,
+    resolveExecute,
+    handleSimulationProgress,
+    handleSimulationComplete,
   ]);
 
   const effectiveColorScheme =
     videoConfig?.colorScheme ?? (resolvedTheme === "dark" ? "dark" : "light");
 
-  // Send webreel:init when iframe is ready or theme changes
   useEffect(() => {
     if (!iframeReady || pickMode) return;
     const themePayload = buildThemePayload(videoConfig?.theme, config?.theme);
@@ -600,175 +239,10 @@ export function Preview() {
     effectiveColorScheme,
   ]);
 
-  // Update preview iframe when color scheme changes
   useEffect(() => {
     if (!iframeReady) return;
     sendToIframe(iframeRef, "webreel:colorScheme", { value: effectiveColorScheme });
   }, [iframeReady, effectiveColorScheme]);
-
-  // ─── Replay to step (fast-forward with real DOM interactions) ─────────
-
-  const waitForReady = useCallback(() => {
-    return new Promise<void>((resolve) => {
-      readyResolverRef.current = resolve;
-    });
-  }, []);
-
-  const waitForExecute = useCallback(() => {
-    return new Promise<void>((resolve) => {
-      executeResolverRef.current = resolve;
-    });
-  }, []);
-
-  const replayToStep = useCallback(
-    async (targetIndex: number) => {
-      if (!videoConfig || !iframeSrc || pickMode) return;
-      const steps = videoConfig.steps;
-      if (targetIndex < 0 || targetIndex >= steps.length) {
-        if (targetIndex < 0) {
-          setReplayState({ status: "idle", targetStep: -1, currentStep: -1 });
-          setReplayedThrough(-1);
-          sendToIframe(iframeRef, "webreel:highlight:clear");
-          setHighlightFound(null);
-        }
-        return;
-      }
-
-      const canFastForward = replayedThrough >= 0 && targetIndex > replayedThrough;
-      const startFrom = canFastForward ? replayedThrough + 1 : 0;
-
-      replayAbortRef.current = false;
-      setReplayState({
-        status: "replaying",
-        targetStep: targetIndex,
-        currentStep: startFrom,
-      });
-
-      if (!canFastForward) {
-        setIframeReady(false);
-        const readyPromise = waitForReady();
-        if (iframeRef.current) {
-          iframeRef.current.src = iframeSrc;
-        }
-        await readyPromise;
-        if (replayAbortRef.current) return;
-      }
-
-      sendToIframe(iframeRef, "webreel:safeguards:enable");
-
-      for (let i = startFrom; i < targetIndex; i++) {
-        if (replayAbortRef.current) break;
-        setReplayState((prev) => ({ ...prev, currentStep: i }));
-
-        const step = steps[i] as Step;
-        const isNav = step.action === "navigate";
-
-        if (isNav) {
-          const execPromise = waitForReady();
-          sendToIframe(iframeRef, "webreel:execute", { step, index: i });
-          await execPromise;
-          if (replayAbortRef.current) break;
-          sendToIframe(iframeRef, "webreel:safeguards:enable");
-        } else {
-          const execPromise = waitForExecute();
-          sendToIframe(iframeRef, "webreel:execute", { step, index: i });
-          await execPromise;
-          if (replayAbortRef.current) break;
-        }
-      }
-
-      sendToIframe(iframeRef, "webreel:safeguards:disable");
-
-      if (!replayAbortRef.current) {
-        setReplayedThrough(targetIndex - 1);
-
-        const targetStep = steps[targetIndex];
-        const selector = targetStep.selector as string | undefined;
-        const text = targetStep.text as string | undefined;
-        const within = targetStep.within as string | undefined;
-        if (selector || text) {
-          sendToIframe(iframeRef, "webreel:highlight", { selector, text, within });
-        } else {
-          sendToIframe(iframeRef, "webreel:highlight:clear");
-          setHighlightFound(null);
-        }
-      }
-
-      setReplayState({
-        status: "idle",
-        targetStep: targetIndex,
-        currentStep: targetIndex,
-      });
-    },
-    [
-      videoConfig,
-      iframeSrc,
-      pickMode,
-      replayedThrough,
-      waitForReady,
-      waitForExecute,
-      setReplayState,
-      setReplayedThrough,
-      setHighlightFound,
-    ],
-  );
-
-  // Replay when selected step changes
-  useEffect(() => {
-    if (!iframeReady || pickMode) return;
-    if (simulationStatus === "playing") return;
-    if (replayState.status === "replaying") return;
-
-    if (selectedStep < 0) {
-      sendToIframe(iframeRef, "webreel:highlight:clear");
-      setHighlightFound(null);
-      return;
-    }
-
-    const steps = videoConfig?.steps ?? [];
-    if (selectedStep >= steps.length) return;
-
-    if (selectedStep === 0) {
-      if (replayedThrough !== -1) {
-        setIframeReady(false);
-        setReplayedThrough(-1);
-        const readyPromise = waitForReady();
-        if (iframeRef.current && iframeSrc) {
-          iframeRef.current.src = iframeSrc;
-        }
-        readyPromise.then(() => {
-          const step = steps[0];
-          const selector = step.selector as string | undefined;
-          const text = step.text as string | undefined;
-          const within = step.within as string | undefined;
-          if (selector || text) {
-            sendToIframe(iframeRef, "webreel:highlight", { selector, text, within });
-          }
-        });
-      } else {
-        const step = steps[0];
-        const selector = step.selector as string | undefined;
-        const text = step.text as string | undefined;
-        const within = step.within as string | undefined;
-        if (selector || text) {
-          sendToIframe(iframeRef, "webreel:highlight", { selector, text, within });
-        } else {
-          sendToIframe(iframeRef, "webreel:highlight:clear");
-          setHighlightFound(null);
-        }
-      }
-      return;
-    }
-
-    replayToStep(selectedStep);
-  }, [selectedStep]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Reset replay state when video changes or iframe reloads from user action
-  useEffect(() => {
-    setReplayedThrough(-1);
-    replayAbortRef.current = true;
-    setReplayState({ status: "idle", targetStep: -1, currentStep: -1 });
-  }, [iframeSrc, setReplayedThrough, setReplayState]);
 
   const copySelector = useCallback(() => {
     if (!pickedSelector) return;
@@ -783,21 +257,6 @@ export function Preview() {
     setCopied(false);
   }, [setPickedSelector]);
 
-  // ─── Recording timer ───────────────────────────────────────────────────────
-
-  useEffect(() => {
-    if (renderStatus === "running") {
-      recordingStartRef.current = Date.now();
-      setRecordingElapsed(0);
-      const interval = setInterval(() => {
-        setRecordingElapsed(Math.floor((Date.now() - recordingStartRef.current) / 1000));
-      }, 1000);
-      return () => clearInterval(interval);
-    }
-  }, [renderStatus]);
-
-  // ─── Auto-transition to playback on recording completion ───────────────────
-
   useEffect(() => {
     if (renderStatus === "done" && lastRenderOutput) {
       setCanvasMode("playback");
@@ -806,11 +265,11 @@ export function Preview() {
 
   useEffect(() => {
     if (canvasMode === "playback" && videoRef.current && lastRenderOutput) {
-      videoRef.current.play().catch(() => {});
+      videoRef.current.play().catch(() => {
+        // autoplay blocked by browser
+      });
     }
   }, [canvasMode, lastRenderOutput]);
-
-  // ─── Video playback controls ───────────────────────────────────────────────
 
   const toggleVideoPlay = useCallback(() => {
     const v = videoRef.current;
@@ -832,155 +291,6 @@ export function Preview() {
     v.pause();
     v.currentTime = Math.max(0, Math.min(v.currentTime + frames / 60, v.duration || 0));
   }, []);
-
-  // ─── Simulation controls ─────────────────────────────────────────────────
-
-  const startSimulation = useCallback(
-    (fromStep?: number) => {
-      if (!iframeReady || !videoConfig) return;
-      const steps = videoConfig.steps;
-      if (steps.length === 0) return;
-      setSimulationStatus("playing");
-      setSimulationStep(fromStep ?? 0);
-      sendToIframe(iframeRef, "webreel:reset");
-      setTimeout(() => {
-        sendToIframe(iframeRef, "webreel:simulate:run", {
-          steps,
-          speed: simulationSpeed,
-          startIndex: fromStep ?? 0,
-        });
-      }, 100);
-    },
-    [iframeReady, videoConfig, simulationSpeed, setSimulationStatus, setSimulationStep],
-  );
-
-  const stopSimulation = useCallback(() => {
-    sendToIframe(iframeRef, "webreel:simulate:stop");
-    setSimulationStatus("idle");
-    setSimulationStep(-1);
-    sendToIframe(iframeRef, "webreel:reset");
-  }, [setSimulationStatus, setSimulationStep]);
-
-  const simulateOneStep = useCallback(
-    (stepIndex: number) => {
-      if (!iframeReady || !videoConfig) return;
-      const steps = videoConfig.steps;
-      if (stepIndex < 0 || stepIndex >= steps.length) return;
-      sendToIframe(iframeRef, "webreel:simulate:step", {
-        step: steps[stepIndex],
-        index: stepIndex,
-        total: steps.length,
-        speed: simulationSpeed,
-      });
-    },
-    [iframeReady, videoConfig, simulationSpeed],
-  );
-
-  // ─── Recording ────────────────────────────────────────────────────────────
-
-  const startRender = useCallback(
-    async (videos?: string[]) => {
-      if (renderStatus === "running" || !config) return;
-      const videosToRecord = videos ?? (selectedVideo ? [selectedVideo] : []);
-      if (videosToRecord.length === 0) return;
-
-      setRenderStatus("running");
-      setRenderLogs([]);
-      setLastRenderOutput(null);
-      setCanvasMode("preview");
-
-      const abort = new AbortController();
-      abortRef.current = abort;
-
-      try {
-        const parsedConfig = JSON.parse(configJson);
-        if (parsedConfig.colorScheme === undefined) {
-          parsedConfig.colorScheme = resolvedTheme === "dark" ? "dark" : "light";
-        }
-        const response = await fetch("/api/render", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            config: parsedConfig,
-            videos: videosToRecord.length > 1 ? videosToRecord : undefined,
-            video: videosToRecord.length === 1 ? videosToRecord[0] : undefined,
-          }),
-          signal: abort.signal,
-        });
-
-        if (!response.ok || !response.body) {
-          setRenderStatus("error");
-          setRenderLogs((prev) => [
-            ...prev,
-            `[err]HTTP ${response.status}: ${response.statusText}`,
-          ]);
-          return;
-        }
-
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "";
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n\n");
-          buffer = lines.pop() ?? "";
-
-          for (const line of lines) {
-            if (!line.startsWith("data: ")) continue;
-            try {
-              const event = JSON.parse(line.slice(6)) as { type: string; data: string };
-              if (event.type === "stdout") {
-                setRenderLogs((prev) => [...prev, event.data]);
-                const outputMatch = event.data.match(/Done:\s*(.+\.(mp4|webm|gif))/i);
-                if (outputMatch) setLastRenderOutput(outputMatch[1]);
-              } else if (event.type === "stderr") {
-                setRenderLogs((prev) => [...prev, `[err]${event.data}`]);
-              } else if (event.type === "exit") {
-                const code = parseInt(event.data, 10);
-                setRenderStatus(code === 0 ? "done" : "error");
-              } else if (event.type === "error") {
-                setRenderLogs((prev) => [...prev, `[err]${event.data}`]);
-                setRenderStatus("error");
-              }
-            } catch {}
-          }
-        }
-      } catch (err) {
-        if ((err as Error).name !== "AbortError") {
-          setRenderStatus("error");
-          setRenderLogs((prev) => [
-            ...prev,
-            `[err]${err instanceof Error ? err.message : "Unknown error"}`,
-          ]);
-        }
-      } finally {
-        abortRef.current = null;
-      }
-    },
-    [
-      renderStatus,
-      config,
-      configJson,
-      selectedVideo,
-      resolvedTheme,
-      setRenderStatus,
-      setRenderLogs,
-      setLastRenderOutput,
-    ],
-  );
-
-  const stopRender = useCallback(() => {
-    if (abortRef.current) {
-      abortRef.current.abort();
-      abortRef.current = null;
-      setRenderStatus("idle");
-      setRenderLogs((prev) => [...prev, "Cancelled by user"]);
-    }
-  }, [setRenderStatus, setRenderLogs]);
 
   const videoSrc = lastRenderOutput
     ? `/api/video?path=${encodeURIComponent(lastRenderOutput)}`

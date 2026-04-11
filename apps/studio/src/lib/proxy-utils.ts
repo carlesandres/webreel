@@ -57,7 +57,7 @@ export function rewriteHtml(html: string, pageUrl: string): string {
 }
 
 export function injectScript(html: string, scriptContent: string): string {
-  const scriptTag = `<script>${scriptContent}<\/script>`;
+  const scriptTag = `<script>${scriptContent}</` + "script>";
   if (/<\/body>/i.test(html)) {
     return html.replace(/<\/body>/i, `${scriptTag}</body>`);
   }
@@ -83,4 +83,4 @@ export const STRIPPED_RESPONSE_HEADERS = new Set([
 ]);
 
 export const DEFAULT_USER_AGENT =
-  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36";

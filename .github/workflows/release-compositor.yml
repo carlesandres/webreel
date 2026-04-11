@@ -25,13 +25,16 @@ jobs:
           - os: macos-latest
             target: aarch64-macos
             binary: webreel-darwin-arm64
+          - os: windows-latest
+            target: x86_64-windows
+            binary: webreel-windows-x64
 
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
-      - uses: goto-bus-stop/setup-zig@v2
+      - uses: goto-bus-stop/setup-zig@abea47f85e598557f500fa1fd2ab7464fcb39406 # v2
         with:
           version: 0.15.2
 
@@ -55,7 +58,7 @@ jobs:
           cp zig-out/bin/webreel.exe dist/${{ matrix.binary }}.exe 2>/dev/null
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: ${{ matrix.binary }}
           path: packages/@webreel/compositor/dist/${{ matrix.binary }}*
@@ -65,12 +68,21 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           path: artifacts
 
+      - name: Generate checksums
+        run: |
+          cd artifacts
+          find . -type f ! -name 'checksums.txt' | sort | while read -r f; do
+            sha256sum "$f"
+          done > checksums.txt
+
       - name: Create release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe # v2
         with:
-          files: artifacts/**/*
+          files: |
+            artifacts/**/*
+            artifacts/checksums.txt
           generate_release_notes: true

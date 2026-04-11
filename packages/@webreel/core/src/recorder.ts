@@ -171,6 +171,11 @@ export class Recorder {
     const ok = stdin.write(buffer);
     if (!ok) {
       await new Promise<void>((res) => {
+        if (this.drainResolve) {
+          const prev = this.drainResolve;
+          this.drainResolve = null;
+          prev();
+        }
         this.drainResolve = res;
       });
     }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef } from "react";
+import { useCallback } from "react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai/react";
 import {
   configJsonAtom,
@@ -12,7 +12,6 @@ import {
 import type { SfxConfig } from "@/store/config";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -21,7 +20,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Volume2 } from "lucide-react";
 
 function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (

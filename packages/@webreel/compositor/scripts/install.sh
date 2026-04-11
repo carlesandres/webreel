@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-REPO="ctate/webreel"
+REPO="vercel-labs/webreel"
 INSTALL_DIR="${WEBREEL_INSTALL_DIR:-$HOME/.webreel/bin}"
 BINARY_NAME="webreel"
 
@@ -71,6 +71,26 @@ main() {
     trap 'rm -rf "$TMPDIR"' EXIT
 
     download "$DOWNLOAD_URL" "$TMPDIR/${PLATFORM}.tar.gz"
+
+    CHECKSUMS_URL="https://github.com/${REPO}/releases/download/${VERSION}/checksums.txt"
+    if download "$CHECKSUMS_URL" "$TMPDIR/checksums.txt" 2>/dev/null; then
+        echo "Verifying checksum..."
+        EXPECTED="$(grep "${PLATFORM}.tar.gz" "$TMPDIR/checksums.txt" | awk '{print $1}')"
+        if [ -n "$EXPECTED" ]; then
+            if command -v sha256sum >/dev/null 2>&1; then
+                ACTUAL="$(sha256sum "$TMPDIR/${PLATFORM}.tar.gz" | awk '{print $1}')"
+            elif command -v shasum >/dev/null 2>&1; then
+                ACTUAL="$(shasum -a 256 "$TMPDIR/${PLATFORM}.tar.gz" | awk '{print $1}')"
+            else
+                echo "Warning: no sha256sum or shasum available, skipping verification."
+                ACTUAL="$EXPECTED"
+            fi
+            if [ "$ACTUAL" != "$EXPECTED" ]; then
+                echo "Checksum mismatch! Expected ${EXPECTED}, got ${ACTUAL}"
+                exit 1
+            fi
+        fi
+    fi
 
     echo "Extracting..."
     mkdir -p "$INSTALL_DIR"

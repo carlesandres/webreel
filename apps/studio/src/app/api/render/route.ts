@@ -5,6 +5,8 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { randomUUID } from "node:crypto";
 
+const VIDEO_NAME_RE = /^[a-zA-Z0-9._-]+$/;
+
 export async function POST(request: NextRequest) {
   const body = (await request.json()) as {
     config: unknown;
@@ -16,27 +18,25 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: "Missing config" }, { status: 400 });
   }
 
+  const allVideos = body.videos ?? (body.video ? [body.video] : []);
+  for (const v of allVideos) {
+    if (!VIDEO_NAME_RE.test(v)) {
+      return Response.json({ error: "Invalid video name" }, { status: 400 });
+    }
+  }
+
   const tempDir = join(tmpdir(), "webreel-studio");
   mkdirSync(tempDir, { recursive: true });
   const configPath = join(tempDir, `${randomUUID()}.json`);
   writeFileSync(configPath, JSON.stringify(body.config, null, 2));
 
-  const webreelBin = join(
-    process.cwd(),
-    "..",
-    "..",
-    "packages",
-    "webreel",
-    "dist",
-    "index.js",
-  );
+  const webreelBin =
+    process.env.WEBREEL_BIN ??
+    join(process.cwd(), "..", "..", "packages", "webreel", "dist", "index.js");
 
-  const videos = body.videos as string[] | undefined;
   const args = ["record"];
-  if (videos && videos.length > 0) {
-    args.push(...videos);
-  } else if (body.video) {
-    args.push(body.video);
+  if (allVideos.length > 0) {
+    args.push(...allVideos);
   }
   args.push("-c", configPath, "--verbose");
 

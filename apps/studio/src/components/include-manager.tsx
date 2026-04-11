@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai/react";
 import {
   configJsonAtom,
@@ -10,7 +10,6 @@ import {
   commitConfigAtom,
 } from "@/store/config";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Plus, Trash2, FileText } from "lucide-react";

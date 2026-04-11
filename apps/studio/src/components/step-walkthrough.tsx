@@ -1,12 +1,11 @@
 "use client";
 
-import { useCallback, useState } from "react";
-import { useAtom, useAtomValue, useSetAtom } from "jotai/react";
+import { useCallback } from "react";
+import { useAtom, useAtomValue } from "jotai/react";
 import { selectedVideoConfigAtom, selectedStepIndexAtom } from "@/store/config";
 import type { Step } from "@/store/config";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Play, Square, SkipBack } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { ChevronLeft, ChevronRight, Square, SkipBack } from "lucide-react";
 
 const ACTION_DESCRIPTIONS: Record<string, (step: Step) => string> = {
   click: (s) => `Click ${s.text || s.selector || "element"}`,

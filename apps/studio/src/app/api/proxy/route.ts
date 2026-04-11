@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PREVIEW_SCRIPT } from "@/lib/preview-script";
 import { rewriteHtml, injectScript, DEFAULT_USER_AGENT } from "@/lib/proxy-utils";
+import { isBlockedUrl } from "@/lib/url-validation";
 
 export async function GET(request: NextRequest) {
   const url = request.nextUrl.searchParams.get("url");
   if (!url) {
     return NextResponse.json({ error: "Missing url parameter" }, { status: 400 });
+  }
+
+  if (isBlockedUrl(url)) {
+    return NextResponse.json({ error: "URL not allowed" }, { status: 403 });
   }
 
   try {
@@ -15,6 +20,7 @@ export async function GET(request: NextRequest) {
         Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
       },
       redirect: "follow",
+      signal: AbortSignal.timeout(10_000),
     });
 
     const contentType = response.headers.get("content-type") || "";

@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
-import { useAtom, useAtomValue, useSetAtom } from "jotai/react";
+import { useState, useCallback } from "react";
+import { useAtomValue } from "jotai/react";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
+import { useFileOperations } from "@/hooks/use-file-operations";
 import { LeftPane } from "@/components/left-pane";
 import { Preview } from "@/components/preview";
 import { PropsPane } from "@/components/props-pane";
@@ -17,115 +18,21 @@ import {
   ResizableHandle,
 } from "@/components/ui/resizable";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import {
-  configJsonAtom,
-  savedConfigJsonAtom,
-  fileHandleAtom,
-  fileNameAtom,
-  commitConfigAtom,
-  DEFAULT_CONFIG,
-  renderStatusAtom,
-  parsedConfigAtom,
-  selectedVideoAtom,
-} from "@/store/config";
+import { renderStatusAtom, parsedConfigAtom, selectedVideoAtom } from "@/store/config";
 
 export default function StudioPage() {
   const isDesktop = useMediaQuery("(min-width: 768px)");
   const [cmdPaletteOpen, setCmdPaletteOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
-  const [configJson, setConfigJson] = useAtom(configJsonAtom);
-  const [savedConfigJson, setSavedConfigJson] = useAtom(savedConfigJsonAtom);
-  const [fileHandle, setFileHandle] = useAtom(fileHandleAtom);
-  const [fileName, setFileName] = useAtom(fileNameAtom);
-  const commit = useSetAtom(commitConfigAtom);
   const renderStatus = useAtomValue(renderStatusAtom);
   const { config } = useAtomValue(parsedConfigAtom);
   const selectedVideo = useAtomValue(selectedVideoAtom);
 
-  const hasFileSystemAccess =
-    typeof window !== "undefined" && "showOpenFilePicker" in window;
-
-  const handleSave = useCallback(async () => {
-    if (fileHandle) {
-      try {
-        const writable = await fileHandle.createWritable();
-        await writable.write(configJson);
-        await writable.close();
-        setSavedConfigJson(configJson);
-      } catch {}
-    } else if (hasFileSystemAccess) {
-      try {
-        const handle = await (
-          window as unknown as {
-            showSaveFilePicker: (opts: unknown) => Promise<FileSystemFileHandle>;
-          }
-        ).showSaveFilePicker({
-          suggestedName: fileName ?? "webreel.config.json",
-          types: [
-            { description: "Webreel Config", accept: { "application/json": [".json"] } },
-          ],
-        });
-        const writable = await handle.createWritable();
-        await writable.write(configJson);
-        await writable.close();
-        setSavedConfigJson(configJson);
-        setFileHandle(handle);
-        setFileName(handle.name);
-      } catch {}
-    } else {
-      const blob = new Blob([configJson], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = fileName ?? "webreel.config.json";
-      a.click();
-      URL.revokeObjectURL(url);
-      setSavedConfigJson(configJson);
-    }
-  }, [
-    fileHandle,
-    hasFileSystemAccess,
-    configJson,
-    fileName,
-    setSavedConfigJson,
-    setFileHandle,
-    setFileName,
-  ]);
-
-  const handleOpen = useCallback(async () => {
-    if (hasFileSystemAccess) {
-      try {
-        const [handle] = await (
-          window as unknown as {
-            showOpenFilePicker: (opts: unknown) => Promise<FileSystemFileHandle[]>;
-          }
-        ).showOpenFilePicker({
-          types: [
-            { description: "Webreel Config", accept: { "application/json": [".json"] } },
-          ],
-          multiple: false,
-        });
-        const file = await handle.getFile();
-        const text = await file.text();
-        commit(text);
-        setSavedConfigJson(text);
-        setFileHandle(handle);
-        setFileName(file.name);
-      } catch {}
-    }
-  }, [hasFileSystemAccess, commit, setSavedConfigJson, setFileHandle, setFileName]);
-
-  const handleNew = useCallback(() => {
-    commit(DEFAULT_CONFIG);
-    setSavedConfigJson(DEFAULT_CONFIG);
-    setFileHandle(null);
-    setFileName(null);
-  }, [commit, setSavedConfigJson, setFileHandle, setFileName]);
+  const { handleSave, handleOpen, handleNew } = useFileOperations();
 
   const handleStartRender = useCallback(async () => {
     if (renderStatus === "running" || !config || !selectedVideo) return;
-    // Trigger via custom event that Preview component listens to
     window.dispatchEvent(new CustomEvent("webreel:start-render"));
   }, [renderStatus, config, selectedVideo]);
 

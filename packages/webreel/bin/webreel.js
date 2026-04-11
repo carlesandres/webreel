@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* global console, process */
 
 import { spawn, execSync } from "child_process";
 import { existsSync, accessSync, chmodSync, constants } from "fs";

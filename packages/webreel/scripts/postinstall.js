@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* global console, process */
 
 import {
   existsSync,
@@ -71,7 +72,9 @@ function downloadFile(url, dest) {
       }).on("error", (err) => {
         try {
           unlinkSync(dest);
-        } catch {}
+        } catch {
+          // cleanup best-effort
+        }
         reject(err);
       });
     };
@@ -91,7 +94,9 @@ function writeInstallMethod() {
   if (method) {
     try {
       writeFileSync(join(binDir, ".install-method"), method);
-    } catch {}
+    } catch {
+      // non-critical metadata
+    }
   }
 }
 

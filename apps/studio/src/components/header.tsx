@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useRef } from "react";
-import { useAtom, useAtomValue, useSetAtom } from "jotai/react";
+import { useAtomValue, useSetAtom } from "jotai/react";
 import {
   configJsonAtom,
   savedConfigJsonAtom,
@@ -12,9 +12,9 @@ import {
   canRedoAtom,
   undoAtom,
   redoAtom,
-  DEFAULT_CONFIG,
   commitConfigAtom,
 } from "@/store/config";
+import { useFileOperations } from "@/hooks/use-file-operations";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import {
@@ -37,7 +37,6 @@ import {
   Settings,
   Circle,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 export interface HeaderHandlers {
   onOpenSettings?: () => void;
@@ -45,57 +44,34 @@ export interface HeaderHandlers {
 }
 
 export function Header({ onOpenSettings }: HeaderHandlers) {
-  const [configJson, setConfigJson] = useAtom(configJsonAtom);
-  const [savedConfigJson, setSavedConfigJson] = useAtom(savedConfigJsonAtom);
-  const [fileHandle, setFileHandle] = useAtom(fileHandleAtom);
-  const [fileName, setFileName] = useAtom(fileNameAtom);
+  const fileName = useAtomValue(fileNameAtom);
   const isDirty = useAtomValue(isDirtyAtom);
   const canUndo = useAtomValue(canUndoAtom);
   const canRedo = useAtomValue(canRedoAtom);
   const undo = useSetAtom(undoAtom);
   const redo = useSetAtom(redoAtom);
   const commit = useSetAtom(commitConfigAtom);
+  const setSavedConfigJson = useSetAtom(savedConfigJsonAtom);
+  const setFileHandle = useSetAtom(fileHandleAtom);
+  const setFileName = useSetAtom(fileNameAtom);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const hasFileSystemAccess =
-    typeof window !== "undefined" && "showOpenFilePicker" in window;
-
-  const handleNew = useCallback(() => {
-    commit(DEFAULT_CONFIG);
-    setSavedConfigJson(DEFAULT_CONFIG);
-    setFileHandle(null);
-    setFileName(null);
-  }, [commit, setSavedConfigJson, setFileHandle, setFileName]);
+  const {
+    handleSave,
+    handleSaveAs,
+    handleOpen: handleOpenFile,
+    handleNew,
+    downloadConfig,
+    hasFileSystemAccess,
+  } = useFileOperations();
 
   const handleOpen = useCallback(async () => {
     if (hasFileSystemAccess) {
-      try {
-        const [handle] = await (
-          window as unknown as {
-            showOpenFilePicker: (opts: unknown) => Promise<FileSystemFileHandle[]>;
-          }
-        ).showOpenFilePicker({
-          types: [
-            {
-              description: "Webreel Config",
-              accept: { "application/json": [".json"] },
-            },
-          ],
-          multiple: false,
-        });
-        const file = await handle.getFile();
-        const text = await file.text();
-        commit(text);
-        setSavedConfigJson(text);
-        setFileHandle(handle);
-        setFileName(file.name);
-      } catch {
-        // User cancelled
-      }
+      await handleOpenFile();
     } else {
       fileInputRef.current?.click();
     }
-  }, [hasFileSystemAccess, commit, setSavedConfigJson, setFileHandle, setFileName]);
+  }, [hasFileSystemAccess, handleOpenFile]);
 
   const handleFileInput = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -114,101 +90,6 @@ export function Header({ onOpenSettings }: HeaderHandlers) {
     },
     [commit, setSavedConfigJson, setFileHandle, setFileName],
   );
-
-  const handleSave = useCallback(async () => {
-    if (fileHandle) {
-      try {
-        const writable = await fileHandle.createWritable();
-        await writable.write(configJson);
-        await writable.close();
-        setSavedConfigJson(configJson);
-      } catch {
-        // Permission denied or error
-      }
-    } else if (hasFileSystemAccess) {
-      try {
-        const handle = await (
-          window as unknown as {
-            showSaveFilePicker: (opts: unknown) => Promise<FileSystemFileHandle>;
-          }
-        ).showSaveFilePicker({
-          suggestedName: fileName ?? "webreel.config.json",
-          types: [
-            {
-              description: "Webreel Config",
-              accept: { "application/json": [".json"] },
-            },
-          ],
-        });
-        const writable = await handle.createWritable();
-        await writable.write(configJson);
-        await writable.close();
-        setSavedConfigJson(configJson);
-        setFileHandle(handle);
-        setFileName(handle.name);
-      } catch {
-        // User cancelled
-      }
-    } else {
-      downloadConfig();
-    }
-  }, [
-    fileHandle,
-    hasFileSystemAccess,
-    configJson,
-    fileName,
-    setSavedConfigJson,
-    setFileHandle,
-    setFileName,
-  ]);
-
-  const handleSaveAs = useCallback(async () => {
-    if (hasFileSystemAccess) {
-      try {
-        const handle = await (
-          window as unknown as {
-            showSaveFilePicker: (opts: unknown) => Promise<FileSystemFileHandle>;
-          }
-        ).showSaveFilePicker({
-          suggestedName: fileName ?? "webreel.config.json",
-          types: [
-            {
-              description: "Webreel Config",
-              accept: { "application/json": [".json"] },
-            },
-          ],
-        });
-        const writable = await handle.createWritable();
-        await writable.write(configJson);
-        await writable.close();
-        setSavedConfigJson(configJson);
-        setFileHandle(handle);
-        setFileName(handle.name);
-      } catch {
-        // User cancelled
-      }
-    } else {
-      downloadConfig();
-    }
-  }, [
-    hasFileSystemAccess,
-    configJson,
-    fileName,
-    setSavedConfigJson,
-    setFileHandle,
-    setFileName,
-  ]);
-
-  const downloadConfig = useCallback(() => {
-    const blob = new Blob([configJson], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = fileName ?? "webreel.config.json";
-    a.click();
-    URL.revokeObjectURL(url);
-    setSavedConfigJson(configJson);
-  }, [configJson, fileName, setSavedConfigJson]);
 
   return (
     <div className="flex shrink-0 items-center gap-1.5 border-b px-2 py-1">

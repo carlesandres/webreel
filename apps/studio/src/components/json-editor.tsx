@@ -92,8 +92,6 @@ export function JsonEditor() {
       view.destroy();
       viewRef.current = null;
     };
-    // Only run on mount
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

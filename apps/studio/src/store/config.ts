@@ -285,7 +285,7 @@ export const VIEWPORT_PRESETS: Record<
   "macbook-air": { width: 1440, height: 900, label: "MacBook Air (1440x900)" },
   "macbook-pro": { width: 1512, height: 982, label: "MacBook Pro (1512x982)" },
   ipad: { width: 1024, height: 1366, label: "iPad (1024x1366)" },
-  "ipad-pro": { width: 1024, height: 1366, label: "iPad Pro (1024x1366)" },
+  "ipad-pro": { width: 1366, height: 1024, label: 'iPad Pro 12.9" (1366x1024)' },
   "ipad-mini": { width: 768, height: 1024, label: "iPad Mini (768x1024)" },
   "iphone-15": { width: 393, height: 852, label: "iPhone 15 (393x852)" },
   "iphone-15-pro-max": { width: 430, height: 932, label: "iPhone 15 Pro Max (430x932)" },
