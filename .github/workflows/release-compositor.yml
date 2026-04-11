@@ -1,0 +1,76 @@
+name: Release Compositor
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-linux
+            binary: webreel-linux-x64
+          - os: ubuntu-latest
+            target: aarch64-linux
+            binary: webreel-linux-arm64
+          - os: macos-latest
+            target: x86_64-macos
+            binary: webreel-darwin-x64
+          - os: macos-latest
+            target: aarch64-macos
+            binary: webreel-darwin-arm64
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: 0.15.2
+
+      - name: Fetch deps
+        working-directory: packages/@webreel/compositor
+        run: bash scripts/fetch-deps.sh
+
+      - name: Build
+        working-directory: packages/@webreel/compositor
+        run: |
+          zig build \
+            -Doptimize=ReleaseFast \
+            -Dtarget=${{ matrix.target }} \
+            -Dexe-name=webreel
+
+      - name: Rename binary
+        working-directory: packages/@webreel/compositor
+        run: |
+          mkdir -p dist
+          cp zig-out/bin/webreel dist/${{ matrix.binary }} 2>/dev/null || \
+          cp zig-out/bin/webreel.exe dist/${{ matrix.binary }}.exe 2>/dev/null
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.binary }}
+          path: packages/@webreel/compositor/dist/${{ matrix.binary }}*
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**/*
+          generate_release_notes: true
