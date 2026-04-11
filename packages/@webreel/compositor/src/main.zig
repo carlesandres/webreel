@@ -389,6 +389,9 @@ fn run_compose(allocator: std.mem.Allocator, args: Args) !void {
     encoder.stdin.?.close();
     encoder.stdin = null;
 
+    decoder.stdout.?.close();
+    decoder.stdout = null;
+
     const enc_term = try encoder.wait();
     const dec_term = try decoder.wait();
 

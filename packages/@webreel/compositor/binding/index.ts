@@ -306,12 +306,8 @@ export class StreamCompositor {
   }
 
   waitForDrain(): Promise<void> {
+    if (!this.stdin.writableNeedDrain) return Promise.resolve();
     return new Promise((res) => {
-      if (this.drainResolve) {
-        const prev = this.drainResolve;
-        this.drainResolve = null;
-        prev();
-      }
       this.drainResolve = res;
     });
   }
