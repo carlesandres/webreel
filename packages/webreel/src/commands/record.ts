@@ -75,7 +75,7 @@ export const recordCommand = new Command("record")
   .option("--verbose", "Log each step as it executes")
   .option("--watch", "Re-record when config files change")
   .option("--dry-run", "Print the resolved config and step list without recording")
-  .option("--frames", "Save raw frames as JPEGs in .webreel/frames/")
+  .option("--frames", "Save raw frames as PNGs in .webreel/frames/")
   .action(
     async (
       videoNames: string[],

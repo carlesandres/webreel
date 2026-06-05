@@ -105,6 +105,8 @@ webreel record -c custom.config.json
 
 When run without arguments, webreel reads `webreel.config.json` from the current directory and records all videos. Provide video names to record specific videos only.
 
+In headless recording mode, `webreel record --frames` saves PNG source frames in `.webreel/frames/`.
+
 ### `webreel preview`
 
 Run a video in a visible browser window without recording.

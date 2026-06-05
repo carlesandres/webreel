@@ -118,6 +118,8 @@ webreel record --watch
 webreel record --verbose
 ```
 
+In headless recording mode, `webreel record --frames` saves PNG source frames in `.webreel/frames/`.
+
 ### Preview
 
 Run a video in a visible browser window without recording:

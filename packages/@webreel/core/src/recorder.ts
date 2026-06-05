@@ -19,7 +19,6 @@ export class Recorder {
   private outputHeight: number;
   private sfx: SfxConfig | undefined;
   private fps: number;
-  private frameMs: number;
   private crf: number;
   private ffmpegPath = "ffmpeg";
   private ffmpegProcess: ChildProcess | null = null;
@@ -31,6 +30,7 @@ export class Recorder {
   private framesDir: string | null = null;
   private stopResolve: (() => void) | null = null;
   private stoppedPromise: Promise<void> | null = null;
+  private lastFrameBuffer: Buffer | null = null;
 
   constructor(
     outputWidth = DEFAULT_VIEWPORT_SIZE,
@@ -41,7 +41,6 @@ export class Recorder {
     this.outputHeight = outputHeight;
     this.sfx = options?.sfx;
     this.fps = options?.fps ?? TARGET_FPS;
-    this.frameMs = 1000 / this.fps;
     this.crf = options?.crf ?? 18;
     if (options?.framesDir) {
       this.framesDir = options.framesDir;
@@ -74,6 +73,7 @@ export class Recorder {
     this.frameCount = 0;
     this.droppedFrames = 0;
     this.running = true;
+    this.lastFrameBuffer = null;
     this.events = [];
     this.ctx = ctx ?? null;
     if (this.ctx) this.ctx.setRecorder(this);
@@ -91,7 +91,7 @@ export class Recorder {
         "-framerate",
         String(this.fps),
         "-c:v",
-        "mjpeg",
+        "png",
         "-i",
         "pipe:0",
         "-c:v",
@@ -159,7 +159,6 @@ export class Recorder {
   }
 
   private async captureLoop(client: CDPClient) {
-    let lastFrameTime = Date.now();
     let consecutiveErrors = 0;
 
     while (this.running) {
@@ -174,37 +173,27 @@ export class Recorder {
           );
           if (!evalResult) break;
         }
-        const screenshotResult = await this.raceStop(
-          client.Page.captureScreenshot({
-            format: "jpeg",
-            quality: 60,
-            optimizeForSpeed: true,
+        const frameResult = await this.raceStop(
+          client.HeadlessExperimental.beginFrame({
+            screenshot: { format: "png", optimizeForSpeed: true },
           }),
         );
-        if (!screenshotResult) break;
+        if (!frameResult) break;
 
-        const buffer = Buffer.from(screenshotResult.data, "base64");
-        const now = Date.now();
-        const elapsed = now - lastFrameTime;
-        const frameSlots = Math.min(3, Math.max(1, Math.round(elapsed / this.frameMs)));
-
-        if (frameSlots > 1) {
-          for (let i = 0; i < frameSlots - 1; i++) {
-            if (this.timeline) this.timeline.tickDuplicate();
-            await this.writeFrame(buffer);
-            this.frameCount++;
-          }
-        }
+        const buffer = frameResult.screenshotData
+          ? Buffer.from(frameResult.screenshotData, "base64")
+          : this.lastFrameBuffer;
+        if (!buffer) continue;
+        this.lastFrameBuffer = buffer;
 
         await this.writeFrame(buffer);
         this.frameCount++;
 
         if (this.framesDir) {
           const padded = String(this.frameCount).padStart(5, "0");
-          writeFileSync(resolve(this.framesDir, `frame-${padded}.jpg`), buffer);
+          writeFileSync(resolve(this.framesDir, `frame-${padded}.png`), buffer);
         }
 
-        lastFrameTime = now;
         consecutiveErrors = 0;
       } catch (err) {
         if (!this.running) break;

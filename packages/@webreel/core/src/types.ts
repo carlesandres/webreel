@@ -46,6 +46,19 @@ export type CDPClient = {
       mobile: boolean;
     }) => Promise<void>;
   };
+  HeadlessExperimental: {
+    enable: () => Promise<void>;
+    beginFrame: (params?: {
+      frameTimeTicks?: number;
+      interval?: number;
+      noDisplayUpdates?: boolean;
+      screenshot?: {
+        format?: "jpeg" | "png" | "webp";
+        quality?: number;
+        optimizeForSpeed?: boolean;
+      };
+    }) => Promise<{ hasDamage: boolean; screenshotData?: string }>;
+  };
   DOM: {
     enable: () => Promise<void>;
   };

@@ -86,7 +86,7 @@ webreel record -c custom.config.json  # custom config path
 webreel record --watch                # re-record on config change
 webreel record --verbose              # log each step
 webreel record --dry-run              # print resolved config only
-webreel record --frames               # save raw JPEGs to .webreel/frames/
+webreel record --frames               # save raw PNGs to .webreel/frames/
 ```
 
 ### preview

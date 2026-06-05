@@ -153,12 +153,41 @@ export async function runVideo(
   const chrome = await launchChrome({ headless: shouldRecord });
   let clientRef: CDPClient | null = null;
   let recorder: Recorder | null = null;
+  let framePumpRunning = false;
+  let framePumpBusy = false;
+  let framePumpTimer: ReturnType<typeof setInterval> | null = null;
+
+  const stopFramePump = async () => {
+    framePumpRunning = false;
+    if (framePumpTimer) {
+      clearInterval(framePumpTimer);
+      framePumpTimer = null;
+    }
+    while (framePumpBusy) {
+      await pause(5);
+    }
+  };
 
   try {
     const client = await connectCDP(chrome.port);
     clientRef = client;
     await client.Page.enable();
     await client.Runtime.enable();
+    if (shouldRecord) {
+      await client.HeadlessExperimental.enable();
+      framePumpRunning = true;
+      framePumpTimer = setInterval(async () => {
+        if (!framePumpRunning || framePumpBusy) return;
+        framePumpBusy = true;
+        try {
+          await client.HeadlessExperimental.beginFrame();
+        } catch {
+          // The client may already be closing, or the recorder may have taken over.
+        } finally {
+          framePumpBusy = false;
+        }
+      }, 16);
+    }
     await client.Emulation.setDeviceMetricsOverride({
       width: cssWidth,
       height: cssHeight,
@@ -235,6 +264,7 @@ export async function runVideo(
         sfx: config.sfx,
       });
       recorder.setTimeline(timeline);
+      await stopFramePump();
       await recorder.start(client, outputPath, ctx);
     } else {
       ctx.setMode("preview");
@@ -453,6 +483,7 @@ export async function runVideo(
         console.warn("Failed to stop recorder:", err);
       }
     }
+    await stopFramePump();
     if (clientRef) {
       try {
         await clientRef.close();
