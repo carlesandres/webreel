@@ -186,16 +186,17 @@ All steps (except `pause`) accept an optional `delay` field (ms to wait after th
 
 #### Top-level
 
-| Field          | Default   | Description                                  |
-| -------------- | --------- | -------------------------------------------- |
-| `$schema`      | -         | JSON Schema URL for IDE autocompletion       |
-| `outDir`       | `videos/` | Default output directory for videos          |
-| `baseUrl`      | `""`      | Prepended to relative video URLs             |
-| `viewport`     | 1080x1080 | Default browser viewport dimensions          |
-| `theme`        | -         | Default cursor and HUD overlay customization |
-| `include`      | -         | Array of step files prepended to all videos  |
-| `defaultDelay` | -         | Default delay (ms) after each step           |
-| `videos`       | required  | Object mapping video names to their configs  |
+| Field          | Default              | Description                                  |
+| -------------- | -------------------- | -------------------------------------------- |
+| `$schema`      | -                    | JSON Schema URL for IDE autocompletion       |
+| `outDir`       | `videos/`            | Default output directory for videos          |
+| `baseUrl`      | `""`                 | Prepended to relative video URLs             |
+| `capture`      | `{ format: "jpeg" }` | Source-frame capture settings                |
+| `viewport`     | 1080x1080            | Default browser viewport dimensions          |
+| `theme`        | -                    | Default cursor and HUD overlay customization |
+| `include`      | -                    | Array of step files prepended to all videos  |
+| `defaultDelay` | -                    | Default delay (ms) after each step           |
+| `videos`       | required             | Object mapping video names to their configs  |
 
 #### Per-video
 
@@ -203,6 +204,7 @@ All steps (except `pause`) accept an optional `delay` field (ms to wait after th
 | -------------- | ------------- | ------------------------------------------------------ |
 | `url`          | required      | URL to navigate to                                     |
 | `baseUrl`      | inherited     | Prepended to relative URLs                             |
+| `capture`      | inherited     | Source-frame capture settings                          |
 | `viewport`     | inherited     | Browser viewport dimensions                            |
 | `zoom`         | -             | CSS zoom level applied to the page                     |
 | `waitFor`      | -             | CSS selector to wait for before start                  |
@@ -211,6 +213,8 @@ All steps (except `pause`) accept an optional `delay` field (ms to wait after th
 | `include`      | inherited     | Array of paths to JSON files whose steps are prepended |
 | `theme`        | inherited     | Cursor and HUD overlay customization                   |
 | `defaultDelay` | inherited     | Default delay (ms) after each step                     |
+
+Set `capture.format` to `"png"` to capture lossless source frames before final video encoding. PNG can improve text and UI detail, but may increase capture CPU usage and frame storage size when using `webreel record --frames`.
 
 ## Development
 

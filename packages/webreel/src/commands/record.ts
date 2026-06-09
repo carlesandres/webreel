@@ -34,6 +34,7 @@ function printResolvedConfig(config: WebreelConfig): void {
 
   if (config.baseUrl) console.log(`  baseUrl:      ${config.baseUrl}`);
   if (config.outDir) console.log(`  outDir:       ${config.outDir}`);
+  if (config.capture?.format) console.log(`  capture:      ${config.capture.format}`);
   if (config.viewport)
     console.log(`  viewport:     ${config.viewport.width}x${config.viewport.height}`);
   if (config.defaultDelay !== undefined)
@@ -44,6 +45,7 @@ function printResolvedConfig(config: WebreelConfig): void {
   for (const video of config.videos) {
     console.log(`  ${cyan(video.name)}`);
     console.log(`    url:      ${video.url}`);
+    if (video.capture?.format) console.log(`    capture:  ${video.capture.format}`);
     if (video.viewport)
       console.log(`    viewport: ${video.viewport.width}x${video.viewport.height}`);
     if (video.zoom) console.log(`    zoom:     ${video.zoom}x`);
@@ -75,7 +77,7 @@ export const recordCommand = new Command("record")
   .option("--verbose", "Log each step as it executes")
   .option("--watch", "Re-record when config files change")
   .option("--dry-run", "Print the resolved config and step list without recording")
-  .option("--frames", "Save raw frames as JPEGs in .webreel/frames/")
+  .option("--frames", "Save raw source frames in .webreel/frames/")
   .action(
     async (
       videoNames: string[],

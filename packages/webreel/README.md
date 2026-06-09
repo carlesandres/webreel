@@ -148,6 +148,7 @@ Raw video and timeline data are saved in `.webreel/raw/` and `.webreel/timelines
 ```json
 {
   "$schema": "https://webreel.dev/schema/v1.json",
+  "capture": { "format": "jpeg" },
   "videos": {
     "my-video": {
       "url": "https://example.com",
@@ -165,18 +166,19 @@ Raw video and timeline data are saved in `.webreel/raw/` and `.webreel/timelines
 
 ### Config options
 
-| Field          | Default       | Description                                               |
-| -------------- | ------------- | --------------------------------------------------------- |
-| `url`          | required      | URL to navigate to                                        |
-| `baseUrl`      | `""`          | Prepended to relative URLs                                |
-| `viewport`     | 1080x1080     | Browser viewport dimensions                               |
-| `zoom`         | -             | CSS zoom level applied to the page                        |
-| `waitFor`      | -             | CSS selector to wait for before starting                  |
-| `output`       | `<name>.mp4`  | Output file path (`.mp4`, `.gif`, or `.webm`)             |
-| `thumbnail`    | `{ time: 0 }` | Object with `time` (seconds) or `enabled: false`          |
-| `theme`        | -             | Overlay theme (`cursor: { image, size, hotspot }`, `hud`) |
-| `include`      | -             | Array of JSON file paths whose steps are prepended        |
-| `defaultDelay` | -             | Default delay (ms) after each step                        |
+| Field          | Default              | Description                                               |
+| -------------- | -------------------- | --------------------------------------------------------- |
+| `url`          | required             | URL to navigate to                                        |
+| `baseUrl`      | `""`                 | Prepended to relative URLs                                |
+| `capture`      | `{ format: "jpeg" }` | Source-frame capture settings, inherited per video        |
+| `viewport`     | 1080x1080            | Browser viewport dimensions                               |
+| `zoom`         | -                    | CSS zoom level applied to the page                        |
+| `waitFor`      | -                    | CSS selector to wait for before starting                  |
+| `output`       | `<name>.mp4`         | Output file path (`.mp4`, `.gif`, or `.webm`)             |
+| `thumbnail`    | `{ time: 0 }`        | Object with `time` (seconds) or `enabled: false`          |
+| `theme`        | -                    | Overlay theme (`cursor: { image, size, hotspot }`, `hud`) |
+| `include`      | -                    | Array of JSON file paths whose steps are prepended        |
+| `defaultDelay` | -                    | Default delay (ms) after each step                        |
 
 ### Actions
 
@@ -196,6 +198,8 @@ Raw video and timeline data are saved in `.webreel/raw/` and `.webreel/timelines
 | `select`     | `selector`, `value`                                    | Select a value in a dropdown          |
 
 All steps (except `pause`) accept an optional `delay` field (ms to wait after the step). Use `defaultDelay` at the top-level or per-video to set a default.
+
+Set `capture.format` to `"png"` to capture lossless source frames before final video encoding. This can improve text and UI detail, but may increase capture CPU usage and frame storage size when using `webreel record --frames`.
 
 ## License
 

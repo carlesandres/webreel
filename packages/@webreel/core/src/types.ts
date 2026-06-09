@@ -68,6 +68,8 @@ export interface SoundEvent {
   timeMs: number;
 }
 
+export type CaptureFormat = "jpeg" | "png";
+
 export const TARGET_FPS = 60;
 export const FRAME_MS = 1000 / TARGET_FPS;
 export const DEFAULT_VIEWPORT_SIZE = 1080;

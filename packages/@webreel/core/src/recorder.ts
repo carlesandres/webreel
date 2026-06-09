@@ -3,11 +3,30 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { resolve, extname } from "node:path";
 import { TARGET_FPS, DEFAULT_VIEWPORT_SIZE } from "./types.js";
-import type { CDPClient, SoundEvent } from "./types.js";
+import type { CDPClient, SoundEvent, CaptureFormat } from "./types.js";
 import type { RecordingContext } from "./actions.js";
 import { ensureFfmpeg } from "./ffmpeg.js";
 import { finalizeMp4, finalizeWebm, finalizeGif, type SfxConfig } from "./media.js";
 import type { InteractionTimeline, TimelineData } from "./timeline.js";
+
+export function getFfmpegInputCodec(format: CaptureFormat): "mjpeg" | "png" {
+  return format === "png" ? "png" : "mjpeg";
+}
+
+export function getFrameExtension(format: CaptureFormat): ".jpg" | ".png" {
+  return format === "png" ? ".png" : ".jpg";
+}
+
+export function getCaptureScreenshotParams(format: CaptureFormat): {
+  format: CaptureFormat;
+  quality?: number;
+  optimizeForSpeed: true;
+} {
+  if (format === "png") {
+    return { format: "png", optimizeForSpeed: true };
+  }
+  return { format: "jpeg", quality: 60, optimizeForSpeed: true };
+}
 
 export class Recorder {
   private outputPath = "";
@@ -31,11 +50,18 @@ export class Recorder {
   private framesDir: string | null = null;
   private stopResolve: (() => void) | null = null;
   private stoppedPromise: Promise<void> | null = null;
+  private captureFormat: CaptureFormat;
 
   constructor(
     outputWidth = DEFAULT_VIEWPORT_SIZE,
     outputHeight = DEFAULT_VIEWPORT_SIZE,
-    options?: { sfx?: SfxConfig; fps?: number; crf?: number; framesDir?: string },
+    options?: {
+      sfx?: SfxConfig;
+      fps?: number;
+      crf?: number;
+      framesDir?: string;
+      captureFormat?: CaptureFormat;
+    },
   ) {
     this.outputWidth = outputWidth;
     this.outputHeight = outputHeight;
@@ -43,6 +69,7 @@ export class Recorder {
     this.fps = options?.fps ?? TARGET_FPS;
     this.frameMs = 1000 / this.fps;
     this.crf = options?.crf ?? 18;
+    this.captureFormat = options?.captureFormat ?? "jpeg";
     if (options?.framesDir) {
       this.framesDir = options.framesDir;
       mkdirSync(this.framesDir, { recursive: true });
@@ -91,7 +118,7 @@ export class Recorder {
         "-framerate",
         String(this.fps),
         "-c:v",
-        "mjpeg",
+        getFfmpegInputCodec(this.captureFormat),
         "-i",
         "pipe:0",
         "-c:v",
@@ -175,11 +202,7 @@ export class Recorder {
           if (!evalResult) break;
         }
         const screenshotResult = await this.raceStop(
-          client.Page.captureScreenshot({
-            format: "jpeg",
-            quality: 60,
-            optimizeForSpeed: true,
-          }),
+          client.Page.captureScreenshot(getCaptureScreenshotParams(this.captureFormat)),
         );
         if (!screenshotResult) break;
 
@@ -201,7 +224,13 @@ export class Recorder {
 
         if (this.framesDir) {
           const padded = String(this.frameCount).padStart(5, "0");
-          writeFileSync(resolve(this.framesDir, `frame-${padded}.jpg`), buffer);
+          writeFileSync(
+            resolve(
+              this.framesDir,
+              `frame-${padded}${getFrameExtension(this.captureFormat)}`,
+            ),
+            buffer,
+          );
         }
 
         lastFrameTime = now;

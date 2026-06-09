@@ -153,6 +153,12 @@ export interface ThemeConfig {
   };
 }
 
+export type CaptureFormat = "jpeg" | "png";
+
+export interface CaptureConfig {
+  format?: CaptureFormat;
+}
+
 export const VIEWPORT_PRESETS: Record<string, { width: number; height: number }> = {
   desktop: { width: 1920, height: 1080 },
   "desktop-hd": { width: 2560, height: 1440 },
@@ -176,6 +182,7 @@ export interface VideoConfig {
   name: string;
   url: string;
   baseUrl?: string;
+  capture?: CaptureConfig;
   viewport?: { width: number; height: number };
   zoom?: number;
   fps?: number;
@@ -195,6 +202,7 @@ export interface WebreelConfig {
   $schema?: string;
   outDir?: string;
   baseUrl?: string;
+  capture?: CaptureConfig;
   viewport?: { width: number; height: number };
   theme?: ThemeConfig;
   sfx?: SfxConfig;

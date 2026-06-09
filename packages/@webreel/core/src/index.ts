@@ -1,4 +1,10 @@
-export type { CDPClient, BoundingBox, Point, SoundEvent } from "./types.js";
+export type {
+  CDPClient,
+  BoundingBox,
+  Point,
+  SoundEvent,
+  CaptureFormat,
+} from "./types.js";
 export {
   TARGET_FPS,
   FRAME_MS,

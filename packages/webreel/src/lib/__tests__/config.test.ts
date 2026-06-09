@@ -302,6 +302,7 @@ describe("validateWebreelConfig", () => {
       $schema: "https://webreel.dev/schema/v1.json",
       outDir: "./videos",
       baseUrl: "https://myapp.com",
+      capture: { format: "png" },
       viewport: { width: 1920, height: 1080 },
       videos: {
         hero: {
@@ -311,6 +312,23 @@ describe("validateWebreelConfig", () => {
       },
     });
     expect(errors).toEqual([]);
+  });
+
+  it("validates top-level capture format", () => {
+    const errors = validateWebreelConfig({
+      capture: { format: "gif" },
+      videos: { x: { url: "u", steps: [] } },
+    });
+    expect(errors).toContainEqual(expect.objectContaining({ path: "capture.format" }));
+  });
+
+  it("validates video-level capture format", () => {
+    const errors = validateWebreelConfig({
+      videos: { x: { url: "u", capture: { format: "gif" }, steps: [] } },
+    });
+    expect(errors).toContainEqual(
+      expect.objectContaining({ path: "videos.x.capture.format" }),
+    );
   });
 
   it("rejects non-object config", () => {
@@ -427,6 +445,7 @@ describe("loadWebreelConfig", () => {
         resolve(dir, "webreel.config.json"),
         JSON.stringify({
           baseUrl: "https://myapp.com",
+          capture: { format: "png" },
           viewport: { width: 1920, height: 1080 },
           videos: {
             hero: {
@@ -438,6 +457,7 @@ describe("loadWebreelConfig", () => {
       );
       const config = await loadWebreelConfig(resolve(dir, "webreel.config.json"));
       expect(config.videos[0].baseUrl).toBe("https://myapp.com");
+      expect(config.videos[0].capture).toEqual({ format: "png" });
       expect(config.videos[0].viewport).toEqual({ width: 1920, height: 1080 });
     } finally {
       cleanup();
@@ -451,11 +471,13 @@ describe("loadWebreelConfig", () => {
         resolve(dir, "webreel.config.json"),
         JSON.stringify({
           baseUrl: "https://default.com",
+          capture: { format: "jpeg" },
           viewport: { width: 1920, height: 1080 },
           videos: {
             hero: {
               url: "/",
               baseUrl: "https://override.com",
+              capture: { format: "png" },
               viewport: { width: 800, height: 600 },
               steps: [],
             },
@@ -464,6 +486,7 @@ describe("loadWebreelConfig", () => {
       );
       const config = await loadWebreelConfig(resolve(dir, "webreel.config.json"));
       expect(config.videos[0].baseUrl).toBe("https://override.com");
+      expect(config.videos[0].capture).toEqual({ format: "png" });
       expect(config.videos[0].viewport).toEqual({ width: 800, height: 600 });
     } finally {
       cleanup();
