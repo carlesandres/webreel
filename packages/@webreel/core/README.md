@@ -137,9 +137,21 @@ Returns a `ChromeInstance` with `process`, `port`, and `kill()`.
 
 ### Recorder
 
-#### `new Recorder(width?, height?, assetsDir?)`
+#### `new Recorder(width?, height?, options?)`
 
 Creates a recorder that captures screenshots and encodes them to MP4.
+
+Options:
+
+| Option          | Type              | Default  | Description                                             |
+| --------------- | ----------------- | -------- | ------------------------------------------------------- |
+| `sfx`           | `SfxConfig`       | -        | Click and key sound effect settings                     |
+| `fps`           | `number`          | `60`     | Capture and output frame rate                           |
+| `crf`           | `number`          | `18`     | H.264 quality setting passed to ffmpeg                  |
+| `framesDir`     | `string`          | -        | Directory for saving raw source frames                  |
+| `captureFormat` | `"jpeg" \| "png"` | `"jpeg"` | Source-frame capture format before final video encoding |
+
+Use `captureFormat: "png"` to capture lossless source frames. JPEG remains the default and is faster for most recordings.
 
 #### `recorder.start(client, outputPath, ctx?): Promise<void>`
 

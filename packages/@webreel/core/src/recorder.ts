@@ -28,6 +28,52 @@ export function getCaptureScreenshotParams(format: CaptureFormat): {
   return { format: "jpeg", quality: 60, optimizeForSpeed: true };
 }
 
+export interface RecorderOptions {
+  sfx?: SfxConfig;
+  fps?: number;
+  crf?: number;
+  framesDir?: string;
+  captureFormat?: CaptureFormat;
+}
+
+export function buildFfmpegRecorderArgs(options: {
+  fps: number;
+  crf: number;
+  captureFormat: CaptureFormat;
+  outputPath: string;
+}): string[] {
+  return [
+    "-y",
+    "-f",
+    "image2pipe",
+    "-framerate",
+    String(options.fps),
+    "-c:v",
+    getFfmpegInputCodec(options.captureFormat),
+    "-i",
+    "pipe:0",
+    "-c:v",
+    "libx264",
+    "-preset",
+    "ultrafast",
+    "-crf",
+    String(options.crf),
+    "-pix_fmt",
+    "yuv420p",
+    "-color_primaries",
+    "bt709",
+    "-color_trc",
+    "bt709",
+    "-colorspace",
+    "bt709",
+    "-movflags",
+    "+faststart",
+    "-r",
+    String(options.fps),
+    options.outputPath,
+  ];
+}
+
 export class Recorder {
   private outputPath = "";
   private frameCount = 0;
@@ -55,13 +101,7 @@ export class Recorder {
   constructor(
     outputWidth = DEFAULT_VIEWPORT_SIZE,
     outputHeight = DEFAULT_VIEWPORT_SIZE,
-    options?: {
-      sfx?: SfxConfig;
-      fps?: number;
-      crf?: number;
-      framesDir?: string;
-      captureFormat?: CaptureFormat;
-    },
+    options?: RecorderOptions,
   ) {
     this.outputWidth = outputWidth;
     this.outputHeight = outputHeight;
@@ -111,36 +151,12 @@ export class Recorder {
 
     this.ffmpegProcess = spawn(
       this.ffmpegPath,
-      [
-        "-y",
-        "-f",
-        "image2pipe",
-        "-framerate",
-        String(this.fps),
-        "-c:v",
-        getFfmpegInputCodec(this.captureFormat),
-        "-i",
-        "pipe:0",
-        "-c:v",
-        "libx264",
-        "-preset",
-        "ultrafast",
-        "-crf",
-        String(this.crf),
-        "-pix_fmt",
-        "yuv420p",
-        "-color_primaries",
-        "bt709",
-        "-color_trc",
-        "bt709",
-        "-colorspace",
-        "bt709",
-        "-movflags",
-        "+faststart",
-        "-r",
-        String(this.fps),
-        this.tempVideo,
-      ],
+      buildFfmpegRecorderArgs({
+        fps: this.fps,
+        crf: this.crf,
+        captureFormat: this.captureFormat,
+        outputPath: this.tempVideo,
+      }),
       { stdio: ["pipe", "pipe", "pipe"] },
     );
 
