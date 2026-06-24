@@ -17,6 +17,7 @@ webreel automatically searches parent directories for a config file, so in a mon
   "$schema": "https://webreel.dev/schema/v1.json",
   "outDir": "./videos",
   "baseUrl": "https://myapp.com",
+  "capture": { "format": "jpeg" },
   "viewport": { "width": 1920, "height": 1080 },
   "defaultDelay": 500,
   "videos": {
@@ -89,6 +90,17 @@ These fields apply as defaults to all videos and can be overridden per-video.
         <code>1080x1080</code>
       </td>
       <td>Default browser viewport dimensions</td>
+    </tr>
+    <tr>
+      <td>
+        <code>capture</code>
+      </td>
+      <td>
+        <code>
+          {"{"} format: "jpeg" {"}"}
+        </code>
+      </td>
+      <td>Default source-frame capture settings for all videos</td>
     </tr>
     <tr>
       <td>
@@ -167,6 +179,15 @@ Each key in the `videos` object is the video name (used as the default output fi
       </td>
       <td>inherited</td>
       <td>Prepended to relative URLs</td>
+    </tr>
+    <tr>
+      <td>
+        <code>capture</code>
+      </td>
+      <td>inherited</td>
+      <td>
+        Source-frame capture settings. Supports <code>format: "jpeg" | "png"</code>
+      </td>
     </tr>
     <tr>
       <td>
@@ -624,6 +645,34 @@ Output quality on a scale of 1-100, where 100 is the highest quality and largest
   }
 }
 ```
+
+## capture
+
+Use `capture.format` to control how source frames are captured before final video encoding.
+
+- `jpeg` is the default and preserves current behavior
+- `png` is opt-in and preserves more detail before ffmpeg encodes the final output
+
+`capture` can be set at the top level as a default and overridden per video:
+
+```json
+{
+  "capture": { "format": "png" },
+  "videos": {
+    "hero": {
+      "url": "/",
+      "steps": []
+    },
+    "social": {
+      "url": "/social",
+      "capture": { "format": "jpeg" },
+      "steps": []
+    }
+  }
+}
+```
+
+PNG can improve text and UI sharpness in the source frames, but may increase capture CPU usage, ffmpeg pipe bandwidth, and frame storage size when using `webreel record --frames`.
 
 ## sfx
 

@@ -1,4 +1,10 @@
-export type { CDPClient, BoundingBox, Point, SoundEvent } from "./types.js";
+export type {
+  CDPClient,
+  BoundingBox,
+  Point,
+  SoundEvent,
+  CaptureFormat,
+} from "./types.js";
 export {
   TARGET_FPS,
   FRAME_MS,
@@ -36,7 +42,7 @@ export {
   dragFromTo,
   captureScreenshot,
 } from "./actions.js";
-export { Recorder } from "./recorder.js";
+export { Recorder, type RecorderOptions } from "./recorder.js";
 export { InteractionTimeline, type TimelineData } from "./timeline.js";
 export { compose, type ComposeOptions } from "./compositor.js";
 export { ensureFfmpeg, FFMPEG_CACHE_DIR } from "./ffmpeg.js";

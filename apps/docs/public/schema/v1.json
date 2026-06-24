@@ -19,6 +19,10 @@
       "type": "string",
       "description": "Base URL prepended to relative video URLs. Supports env var substitution (e.g. \"$BASE_URL\" or \"${BASE_URL}\")."
     },
+    "capture": {
+      "$ref": "#/$defs/capture",
+      "description": "Default source-frame capture settings for all videos."
+    },
     "viewport": {
       "$ref": "#/$defs/viewport",
       "description": "Default viewport dimensions for all videos."
@@ -216,6 +220,18 @@
       },
       "additionalProperties": false
     },
+    "capture": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "type": "string",
+          "enum": ["jpeg", "png"],
+          "default": "jpeg",
+          "description": "Source-frame capture format. JPEG is the default. PNG is opt-in and preserves more detail before final video encoding."
+        }
+      },
+      "additionalProperties": false
+    },
     "video": {
       "type": "object",
       "required": ["url", "steps"],
@@ -228,6 +244,10 @@
         "baseUrl": {
           "type": "string",
           "description": "Base URL prepended to relative URLs. Overrides the top-level baseUrl."
+        },
+        "capture": {
+          "$ref": "#/$defs/capture",
+          "description": "Source-frame capture settings. Overrides the top-level capture config."
         },
         "viewport": {
           "$ref": "#/$defs/viewport",

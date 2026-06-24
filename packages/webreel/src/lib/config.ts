@@ -92,7 +92,14 @@ function resolveVideoDefaults(
   defaults: Partial<
     Pick<
       WebreelConfig,
-      "baseUrl" | "viewport" | "theme" | "include" | "defaultDelay" | "clickDwell" | "sfx"
+      | "baseUrl"
+      | "capture"
+      | "viewport"
+      | "theme"
+      | "include"
+      | "defaultDelay"
+      | "clickDwell"
+      | "sfx"
     >
   >,
   outDir: string | undefined,
@@ -100,6 +107,7 @@ function resolveVideoDefaults(
 ): VideoConfig {
   const resolved = { ...video };
   if (!resolved.baseUrl && defaults.baseUrl) resolved.baseUrl = defaults.baseUrl;
+  if (!resolved.capture && defaults.capture) resolved.capture = defaults.capture;
   if (!resolved.viewport && defaults.viewport) resolved.viewport = defaults.viewport;
   if (defaults.theme) {
     resolved.theme = {
@@ -171,6 +179,7 @@ async function buildConfigFromParsed(
   const outDir = resolve(configDir, (parsed.outDir as string) ?? "videos");
   const defaults = {
     baseUrl: parsed.baseUrl as string | undefined,
+    capture: parsed.capture as WebreelConfig["capture"],
     viewport: resolveViewportValue(parsed.viewport),
     theme: parsed.theme as WebreelConfig["theme"],
     sfx: parsed.sfx as WebreelConfig["sfx"],
@@ -195,6 +204,7 @@ async function buildConfigFromParsed(
     $schema: parsed.$schema as string | undefined,
     outDir: parsed.outDir as string | undefined,
     baseUrl: parsed.baseUrl as string | undefined,
+    capture: parsed.capture as WebreelConfig["capture"],
     viewport: resolveViewportValue(parsed.viewport),
     theme: parsed.theme as WebreelConfig["theme"],
     sfx: parsed.sfx as WebreelConfig["sfx"],
@@ -296,6 +306,7 @@ const KNOWN_TOP_LEVEL_KEYS = new Set([
   "$schema",
   "outDir",
   "baseUrl",
+  "capture",
   "viewport",
   "theme",
   "sfx",
@@ -308,6 +319,7 @@ const KNOWN_TOP_LEVEL_KEYS = new Set([
 const KNOWN_VIDEO_KEYS = new Set([
   "url",
   "baseUrl",
+  "capture",
   "viewport",
   "zoom",
   "fps",
@@ -692,6 +704,26 @@ function validateInclude(include: unknown, prefix: string): ValidationError[] {
   return errors;
 }
 
+function validateCapture(capture: unknown, prefix: string): ValidationError[] {
+  const errors: ValidationError[] = [];
+  if (typeof capture !== "object" || capture === null) {
+    errors.push({ path: prefix, message: "Must be an object" });
+    return errors;
+  }
+
+  const c = capture as Record<string, unknown>;
+  errors.push(...checkUnknownKeys(c, new Set(["format"]), prefix));
+
+  if (c.format !== undefined && c.format !== "jpeg" && c.format !== "png") {
+    errors.push({
+      path: `${prefix}.format`,
+      message: 'Must be "jpeg" or "png"',
+    });
+  }
+
+  return errors;
+}
+
 const VALID_SFX_VARIANTS = new Set([1, 2, 3, 4]);
 
 function isValidSfxValue(value: unknown): boolean {
@@ -835,6 +867,10 @@ export function validateWebreelConfig(
     errors.push({ path: "baseUrl", message: "Must be a string" });
   }
 
+  if (c.capture !== undefined) {
+    errors.push(...validateCapture(c.capture, "capture"));
+  }
+
   if (c.viewport !== undefined) {
     errors.push(...validateViewport(c.viewport, "viewport"));
   }
@@ -907,6 +943,10 @@ export function validateWebreelConfig(
 
     if (d.zoom !== undefined && (!Number.isFinite(d.zoom) || (d.zoom as number) <= 0)) {
       errors.push({ path: `${prefix}.zoom`, message: "Must be a positive number" });
+    }
+
+    if (d.capture !== undefined) {
+      errors.push(...validateCapture(d.capture, `${prefix}.capture`));
     }
 
     if (

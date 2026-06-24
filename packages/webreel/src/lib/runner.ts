@@ -5,6 +5,7 @@ import {
   type CDPClient,
   type BoundingBox,
   type OverlayTheme,
+  type CaptureFormat,
   RecordingContext,
   connectCDP,
   launchChrome,
@@ -136,6 +137,7 @@ export async function runVideo(
   const verbose = options?.verbose ?? false;
   const saveFrames = options?.frames ?? false;
   const configDir = options?.configDir ?? process.cwd();
+  const captureFormat: CaptureFormat = config.capture?.format ?? "jpeg";
 
   console.log(`${shouldRecord ? "Recording" : "Previewing"}: ${config.name}`);
 
@@ -229,6 +231,7 @@ export async function runVideo(
         ? resolve(configDir, ".webreel", "frames", config.name)
         : undefined;
       recorder = new Recorder(width, height, {
+        captureFormat,
         fps: config.fps,
         crf,
         framesDir,

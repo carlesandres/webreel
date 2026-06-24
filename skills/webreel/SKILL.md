@@ -86,7 +86,7 @@ webreel record -c custom.config.json  # custom config path
 webreel record --watch                # re-record on config change
 webreel record --verbose              # log each step
 webreel record --dry-run              # print resolved config only
-webreel record --frames               # save raw JPEGs to .webreel/frames/
+webreel record --frames               # save raw source frames to .webreel/frames/
 ```
 
 ### preview
@@ -131,17 +131,18 @@ Config files are auto-discovered as `webreel.config.json` (or `.ts`, `.mts`, `.j
 
 ### Top-level fields
 
-| Field          | Default     | Description                                      |
-| -------------- | ----------- | ------------------------------------------------ |
-| `$schema`      | -           | `"https://webreel.dev/schema/v1.json"`           |
-| `outDir`       | `"videos/"` | Output directory for rendered videos             |
-| `baseUrl`      | `""`        | Base URL prepended to relative video URLs        |
-| `viewport`     | `1080x1080` | Default viewport `{ width, height }`             |
-| `theme`        | -           | Cursor and HUD overlay theme                     |
-| `sfx`          | -           | Sound effect settings                            |
-| `include`      | -           | Array of step file paths prepended to all videos |
-| `defaultDelay` | -           | Default delay (ms) appended after each step      |
-| `clickDwell`   | -           | Cursor dwell time (ms) before a click            |
+| Field          | Default              | Description                                      |
+| -------------- | -------------------- | ------------------------------------------------ |
+| `$schema`      | -                    | `"https://webreel.dev/schema/v1.json"`           |
+| `outDir`       | `"videos/"`          | Output directory for rendered videos             |
+| `baseUrl`      | `""`                 | Base URL prepended to relative video URLs        |
+| `capture`      | `{ format: "jpeg" }` | Source-frame capture settings                    |
+| `viewport`     | `1080x1080`          | Default viewport `{ width, height }`             |
+| `theme`        | -                    | Cursor and HUD overlay theme                     |
+| `sfx`          | -                    | Sound effect settings                            |
+| `include`      | -                    | Array of step file paths prepended to all videos |
+| `defaultDelay` | -                    | Default delay (ms) appended after each step      |
+| `clickDwell`   | -                    | Cursor dwell time (ms) before a click            |
 
 ### Per-video fields
 
@@ -150,6 +151,7 @@ Each entry in the `videos` map supports:
 | Field          | Default        | Description                                        |
 | -------------- | -------------- | -------------------------------------------------- |
 | `url`          | required       | URL to open (absolute or relative to `baseUrl`)    |
+| `capture`      | inherited      | Source-frame capture settings                      |
 | `viewport`     | inherited      | Override viewport `{ width, height }`              |
 | `zoom`         | -              | CSS zoom factor                                    |
 | `waitFor`      | -              | Selector or text to wait for before starting steps |
@@ -163,6 +165,8 @@ Each entry in the `videos` map supports:
 | `fps`          | `60`           | Frame rate                                         |
 | `quality`      | `80`           | Encoding quality (1-100)                           |
 | `steps`        | required       | Array of step objects                              |
+
+Set `capture.format` to `"png"` to capture lossless source frames before final video encoding. JPEG remains the default. PNG can improve text and UI detail, but may increase capture CPU usage and frame storage size when using `webreel record --frames`.
 
 ### Videos map
 

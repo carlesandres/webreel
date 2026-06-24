@@ -15,6 +15,7 @@ export type {
   StepHover,
   StepSelect,
   ThemeConfig,
+  CaptureConfig,
   CursorConfig,
   ElementTarget,
 } from "./lib/types.js";
@@ -27,6 +28,7 @@ export interface InputWebreelConfig {
   $schema?: string;
   outDir?: string;
   baseUrl?: string;
+  capture?: import("./lib/types.js").CaptureConfig;
   viewport?: string | { width: number; height: number };
   theme?: import("./lib/types.js").ThemeConfig;
   sfx?: import("./lib/types.js").SfxConfig;
