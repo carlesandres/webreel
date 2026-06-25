@@ -1,5 +1,16 @@
 # webreel
 
+## 0.2.0
+
+### Minor Changes
+
+- f913712: Publish the scoped `@carlesandres` packages, and add support for honoring the configured quality setting during composite output.
+
+### Patch Changes
+
+- Updated dependencies [f913712]
+  - @carlesandres/webreel-core@0.2.0
+
 ## 0.1.4
 
 ### Patch Changes
