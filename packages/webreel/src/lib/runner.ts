@@ -29,7 +29,7 @@ import {
   extractThumbnail,
   moveFileSync,
   DEFAULT_VIEWPORT_SIZE,
-} from "@webreel/core";
+} from "@carlesandres/webreel-core";
 import type { VideoConfig, Step, ElementTarget } from "./types.js";
 
 export function formatStep(i: number, step: Step): string {
@@ -209,6 +209,10 @@ export async function runVideo(
     let timeline: InteractionTimeline | null = null;
     const outputPath =
       config.output ?? resolve(configDir, "videos", `${config.name}.mp4`);
+    const crf =
+      config.quality !== undefined
+        ? Math.round(51 * (1 - config.quality / 100))
+        : undefined;
 
     if (shouldRecord) {
       ctx.setMode("record");
@@ -223,10 +227,6 @@ export async function runVideo(
       });
       ctx.setTimeline(timeline);
 
-      const crf =
-        config.quality !== undefined
-          ? Math.round(51 * (1 - config.quality / 100))
-          : undefined;
       const framesDir = saveFrames
         ? resolve(configDir, ".webreel", "frames", config.name)
         : undefined;
@@ -440,7 +440,10 @@ export async function runVideo(
         ctx.setTimeline(null);
         mkdirSync(dirname(outputPath), { recursive: true });
         console.log(`Compositing overlays...`);
-        await compose(rawVideoPath, timelineData, outputPath, { sfx: config.sfx });
+        await compose(rawVideoPath, timelineData, outputPath, {
+          sfx: config.sfx,
+          crf,
+        });
       }
       await extractThumbnailIfConfigured(config, outputPath);
 
