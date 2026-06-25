@@ -175,8 +175,8 @@ export const VIEWPORT_PRESETS: Record<string, { width: number; height: number }>
   "galaxy-s24": { width: 360, height: 780 },
 };
 
-export type { SfxConfig } from "@webreel/core";
-import type { SfxConfig } from "@webreel/core";
+export type { SfxConfig } from "@carlesandres/webreel-core";
+import type { SfxConfig } from "@carlesandres/webreel-core";
 
 export interface VideoConfig {
   name: string;
