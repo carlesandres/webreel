@@ -95,4 +95,21 @@ describe("InteractionTimeline", () => {
     expect(data.frames[1].cursor.y).toBe(40);
     expect(data.frames[2].cursor.x).toBe(30);
   });
+
+  it("waitForCursorPathComplete resolves after the path is consumed", async () => {
+    const tl = new InteractionTimeline(1080, 1080);
+    tl.setCursorPath([
+      { x: 0, y: 0 },
+      { x: 50, y: 50 },
+      { x: 100, y: 100 },
+    ]);
+
+    const waitPromise = tl.waitForCursorPathComplete();
+    tl.tick();
+    tl.tick();
+    tl.tick();
+    await waitPromise;
+
+    expect(tl.isCursorPathActive()).toBe(false);
+  });
 });

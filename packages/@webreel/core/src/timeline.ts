@@ -143,6 +143,16 @@ export class InteractionTimeline {
     });
   }
 
+  isCursorPathActive(): boolean {
+    return this.cursorPath !== null;
+  }
+
+  async waitForCursorPathComplete(): Promise<void> {
+    while (this.cursorPath !== null) {
+      await this.waitForNextTick();
+    }
+  }
+
   tick(): void {
     if (this.cursorPath && this.pathIndex < this.cursorPath.length) {
       const p = this.cursorPath[this.pathIndex++];
