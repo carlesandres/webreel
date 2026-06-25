@@ -1,7 +1,7 @@
 import { Command } from "commander";
 import { readFileSync, existsSync, mkdirSync } from "node:fs";
 import { resolve, dirname } from "node:path";
-import { compose, type TimelineData } from "@webreel/core";
+import { compose, type TimelineData } from "@carlesandres/webreel-core";
 import {
   loadWebreelConfig,
   resolveConfigPath,
@@ -49,7 +49,11 @@ export const compositeCommand = new Command("composite")
 
       mkdirSync(dirname(outputPath), { recursive: true });
       console.log(`Compositing: ${video.name}`);
-      await compose(rawPath, timelineData, outputPath, { sfx: video.sfx });
+      const crf =
+        video.quality !== undefined
+          ? Math.round(51 * (1 - video.quality / 100))
+          : undefined;
+      await compose(rawPath, timelineData, outputPath, { sfx: video.sfx, crf });
 
       await extractThumbnailIfConfigured(video, outputPath);
 
