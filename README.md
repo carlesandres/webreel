@@ -230,6 +230,32 @@ pnpm install
 pnpm build
 ```
 
+### Release changesets
+
+For the common case where both published packages should get the same bump, use one of these shortcuts:
+
+```bash
+pnpm release:patch "Fix cursor move timing during recording"
+pnpm release:minor "Add support for ..."
+pnpm release:major "Rename the public config API"
+```
+
+You can also use the generic form:
+
+```bash
+pnpm release:changeset patch "Fix cursor move timing during recording"
+```
+
+This creates the `.changeset/*.md` file for the fixed version group automatically. Commit that file in its own PR, then merge the later `chore: version packages` PR opened by GitHub Actions.
+
+To publish both packages locally in one command after versions have been updated:
+
+```bash
+pnpm release:publish
+```
+
+This builds the workspace, then runs `changeset publish` for both published packages.
+
 ## Packages
 
 | Package                                   | Description                                |
